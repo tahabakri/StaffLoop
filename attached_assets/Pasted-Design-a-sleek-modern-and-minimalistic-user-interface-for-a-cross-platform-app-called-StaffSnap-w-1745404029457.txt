@@ -1,0 +1,92 @@
+Design a sleek, modern, and minimalistic user interface for a cross-platform app called StaffSnap, which helps event organizers track staff attendance using facial recognition check-ins. This app should be visually appealing to users in the UAE event industry — event managers, staffing agencies, and corporate organizers.
+
+Key Features to Include:
+
+1. Onboarding/Login (for Staff and Organizers):
+
+Two types of users: Organizer and Staff
+
+Staff log in with phone number or QR code
+
+Organizers log in with email/password or admin link
+
+2. Staff Check-In/Out (Main Feature):
+
+Staff land on a check-in screen where they take a selfie to check in
+
+Facial match system confirms identity (placeholder for API)
+
+Shows check-in timestamp and event details
+
+GPS location is logged
+
+3. Organizer Dashboard:
+
+Live status of all staff (Checked-in, Not yet, Late)
+
+Simple cards with names, face thumbnail, check-in time
+
+Filters for shift timing and roles
+
+4. Post-Event Report Generator:
+
+Option to download PDF attendance report
+
+Summary of who came, who didn’t, and lateness
+
+Face thumbnails (optional toggle)
+
+Attendance scorecard (e.g., "92% Attendance")
+
+5. Admin Features:
+
+Upload event and staff list via CSV
+
+Manual override for check-in
+
+Delete or edit entries
+
+Design Requirements:
+
+Mobile-first layout
+
+Soft shadows, modern fonts (like Inter or SF Pro)
+
+White background with accent color (#4285F4 or something regional like UAE gold/green)
+
+Rounded corners (2xl)
+
+Intuitive, smooth UI — similar vibe to apps like Notion, Slack, or Linear
+
+Use simple icons, avoid clutter
+
+Optional Integrations (Mockups only):
+
+Facial recognition placeholder (API ready)
+
+Notification icon for late staff
+
+Export to PDF or Excel
+
+Pages to Include:
+
+Login & Signup (both roles)
+
+Staff Check-In Screen
+
+Organizer Dashboard
+
+Staff List & Status
+
+Event Setup
+
+Report Download Page
+
+Settings
+
+Branding/Logo:
+
+Simple, clean logo using camera + checkmark or face icon
+
+Wordmark with "StaffSnap" in bold and playful but professional style
+
