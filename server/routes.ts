@@ -7,6 +7,7 @@ import { insertEventSchema, insertStaffAssignmentSchema, checkInSchema } from "@
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { parse } from "csv-parse/sync";
+import { randomBytes } from "crypto";
 
 // Configure multer storage for file uploads
 const upload = multer({
@@ -34,6 +35,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "Organizer access required" });
     }
     next();
+  };
+  
+  // Type for role stats
+  type RoleStats = {
+    [key: string]: {
+      total: number;
+      checkedIn: number;
+    }
   };
 
   // Event Routes
@@ -275,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const absent = assignments.filter(a => a.isAbsent).length;
       
       // Group by role
-      const roleStats = {};
+      const roleStats: RoleStats = {};
       assignments.forEach(a => {
         if (!roleStats[a.role]) {
           roleStats[a.role] = { total: 0, checkedIn: 0 };
