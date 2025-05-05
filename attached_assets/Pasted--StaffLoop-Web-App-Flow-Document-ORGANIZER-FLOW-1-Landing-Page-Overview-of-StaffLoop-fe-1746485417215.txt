@@ -1,0 +1,173 @@
+✅ StaffLoop – Web App Flow Document
+🧑‍💼 ORGANIZER FLOW
+1. Landing Page
+Overview of StaffLoop features
+
+
+Call-to-action buttons: “Sign Up” and “Login”
+
+
+2. Sign Up
+Organizer inputs:
+
+
+Company Name
+
+
+Business Email
+
+
+Phone Number
+
+
+Estimated Number of Events / Staff
+
+
+Clicks “Submit”
+
+
+3. Redirect to Onboarding Page
+Simple survey: What kind of events do you organize? How often? How many staff usually?
+
+
+Prompt to schedule a 15–30 min onboarding call (Calendly or built-in scheduler)
+
+
+4. Admin Approves
+Organizer receives an email or WhatsApp confirmation once approved
+
+
+Login credentials are sent (Email + Temporary Password)
+
+
+5. Login → Dashboard
+Organizer logs in and sees:
+
+
+Overview (upcoming events, staff count, attendance data)
+
+
+Tabs: Events, Staff, Payments, Support
+
+
+6. Create an Event
+Inputs:
+
+
+Event Title, Dates, Times
+
+
+Location (with map pin)
+
+
+Number of staff required
+
+
+Upload CSV or manually add staff info (Name, Phone)
+
+
+7. Payment Before Activation
+Organizer selects number of days, staff, and rate
+
+
+Payment gateway popup (Stripe or Telr)
+
+
+After successful payment, event is activated
+
+
+8. View Attendance Dashboard
+Track check-ins in real-time
+
+
+Statuses: Checked In ✅, Late ⚠️, Not Checked In ❌
+
+
+View staff photos, geo-tags
+
+
+9. Support Tab
+WhatsApp shortcut or ticket form
+
+
+For urgent issues or feature help
+
+
+
+👷 STAFF FLOW
+1. Login via Phone
+Staff opens the web app (mobile browser)
+
+
+Enters phone number
+
+
+Receives OTP or logs in with password
+
+
+2. View Upcoming Shifts
+Dashboard shows assigned event(s)
+
+
+Event info: date, time, location, supervisor contact
+
+
+3. Check-In
+Enters event location
+
+
+Takes selfie (facial recognition)
+
+
+System checks:
+
+
+Face Match
+
+
+Geo-location
+
+
+If failed:
+
+
+Manual override with supervisor review
+
+
+4. During Event
+Can access:
+
+
+Event details
+
+
+Contact supervisor (call)
+
+
+Support (WhatsApp or Help Form)
+
+
+5. End of Shift (Optional)
+“Check Out” button (facial + geo again if required)
+
+
+
+🔐 ADMIN FLOW
+Admin Panel Includes:
+Organizer Approvals
+
+
+Event Listings
+
+
+Staff Records
+
+
+Attendance Logs
+
+
+Payment Records
+
+
+Support Management
+
