@@ -1,4 +1,8 @@
-import { User, Event, StaffAssignment, InsertUser, InsertEvent, InsertStaffAssignment, CheckIn } from "@shared/schema";
+import { 
+  User, Event, StaffAssignment, OnboardingSurvey, Payment, SupportTicket, 
+  InsertUser, InsertEvent, InsertStaffAssignment, InsertOnboardingSurvey, InsertPayment, InsertSupportTicket,
+  CheckIn, CheckOut
+} from "@shared/schema";
 import { nanoid } from "nanoid";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -26,12 +30,24 @@ export interface IStorage {
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   listUsers(): Promise<User[]>;
   listStaffUsers(): Promise<User[]>;
+  listOrganizerUsers(): Promise<User[]>;
+  listPendingOrganizers(): Promise<User[]>;
+  updateUserStatus(id: number, status: string): Promise<User | undefined>;
+  updateStripeCustomerId(id: number, stripeId: string): Promise<User | undefined>;
+
+  // Onboarding methods
+  getOnboardingSurvey(id: number): Promise<OnboardingSurvey | undefined>;
+  getOnboardingSurveyByUserId(userId: number): Promise<OnboardingSurvey | undefined>;
+  createOnboardingSurvey(survey: InsertOnboardingSurvey): Promise<OnboardingSurvey>;
+  updateOnboardingSurvey(id: number, survey: Partial<OnboardingSurvey>): Promise<OnboardingSurvey | undefined>;
 
   // Event methods
   getEvent(id: number): Promise<Event | undefined>;
   createEvent(event: InsertEvent, organizerId: number): Promise<Event>;
   listEvents(organizerId?: number): Promise<Event[]>;
+  listActiveEvents(organizerId?: number): Promise<Event[]>;
   updateEvent(id: number, event: Partial<Event>): Promise<Event | undefined>;
+  activateEvent(id: number): Promise<Event | undefined>;
   deleteEvent(id: number): Promise<boolean>;
 
   // Assignment methods
@@ -39,6 +55,23 @@ export interface IStorage {
   createStaffAssignment(assignment: InsertStaffAssignment): Promise<StaffAssignment>;
   listStaffAssignments(eventId?: number, staffId?: number): Promise<StaffAssignment[]>;
   checkInStaff(data: CheckIn): Promise<StaffAssignment | undefined>;
+  checkOutStaff(data: CheckOut): Promise<StaffAssignment | undefined>;
+  approveOverride(assignmentId: number, approverId: number): Promise<StaffAssignment | undefined>;
+  
+  // Payment methods
+  getPayment(id: number): Promise<Payment | undefined>;
+  getPaymentByEventId(eventId: number): Promise<Payment | undefined>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePaymentStatus(id: number, status: string, stripeId?: string): Promise<Payment | undefined>;
+  listPayments(organizerId?: number): Promise<Payment[]>;
+  
+  // Support methods
+  getSupportTicket(id: number): Promise<SupportTicket | undefined>;
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  updateSupportTicket(id: number, ticket: Partial<SupportTicket>): Promise<SupportTicket | undefined>;
+  assignSupportTicket(id: number, assigneeId: number): Promise<SupportTicket | undefined>;
+  closeSupportTicket(id: number): Promise<SupportTicket | undefined>;
+  listSupportTickets(userId?: number, assignedTo?: number): Promise<SupportTicket[]>;
   
   // Session store for auth
   sessionStore: any;
@@ -48,18 +81,32 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private events: Map<number, Event>;
   private staffAssignments: Map<number, StaffAssignment>;
+  private onboardingSurveys: Map<number, OnboardingSurvey>;
+  private payments: Map<number, Payment>;
+  private supportTickets: Map<number, SupportTicket>;
   sessionStore: any;
   private userIdCounter: number;
   private eventIdCounter: number;
   private assignmentIdCounter: number;
+  private surveyIdCounter: number;
+  private paymentIdCounter: number;
+  private ticketIdCounter: number;
 
   constructor() {
     this.users = new Map();
     this.events = new Map();
     this.staffAssignments = new Map();
+    this.onboardingSurveys = new Map();
+    this.payments = new Map();
+    this.supportTickets = new Map();
+    
     this.userIdCounter = 1;
     this.eventIdCounter = 1;
     this.assignmentIdCounter = 1;
+    this.surveyIdCounter = 1;
+    this.paymentIdCounter = 1;
+    this.ticketIdCounter = 1;
+    
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
@@ -247,8 +294,13 @@ export class MemStorage implements IStorage {
       phone: userData.phone || "",
       name: userData.name,
       password: userData.password,
-      role: (userData.role as "organizer" | "staff") || "staff",
+      role: (userData.role as "organizer" | "staff" | "admin") || "staff",
       profileImage: userData.profileImage || "",
+      companyName: userData.companyName || null,
+      estimatedEvents: userData.estimatedEvents || null,
+      estimatedStaff: userData.estimatedStaff || null,
+      accountStatus: userData.role === "organizer" ? "pending" : "active",
+      stripeCustomerId: null,
       createdAt,
     };
 
@@ -273,6 +325,34 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).filter(user => user.role === "staff");
   }
 
+  async listOrganizerUsers(): Promise<User[]> {
+    return Array.from(this.users.values()).filter(user => user.role === "organizer");
+  }
+
+  async listPendingOrganizers(): Promise<User[]> {
+    return Array.from(this.users.values()).filter(
+      user => user.role === "organizer" && user.accountStatus === "pending"
+    );
+  }
+
+  async updateUserStatus(id: number, status: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+
+    const updatedUser = { ...user, accountStatus: status };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateStripeCustomerId(id: number, stripeId: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+
+    const updatedUser = { ...user, stripeCustomerId: stripeId };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
   // Event methods
   async getEvent(id: number): Promise<Event | undefined> {
     return this.events.get(id);
@@ -291,11 +371,32 @@ export class MemStorage implements IStorage {
       endTime: eventData.endTime,
       description: eventData.description || "",
       organizerId,
+      isActive: false,
+      staffCount: 0,
+      duration: eventData.duration || 1,
+      mapLocation: eventData.mapLocation || null,
       createdAt,
     };
 
     this.events.set(id, event);
     return event;
+  }
+  
+  async listActiveEvents(organizerId?: number): Promise<Event[]> {
+    let events = Array.from(this.events.values()).filter(event => event.isActive);
+    if (organizerId) {
+      events = events.filter(event => event.organizerId === organizerId);
+    }
+    return events;
+  }
+  
+  async activateEvent(id: number): Promise<Event | undefined> {
+    const event = this.events.get(id);
+    if (!event) return undefined;
+
+    const updatedEvent = { ...event, isActive: true };
+    this.events.set(id, updatedEvent);
+    return updatedEvent;
   }
 
   async listEvents(organizerId?: number): Promise<Event[]> {
@@ -333,9 +434,16 @@ export class MemStorage implements IStorage {
       eventId: assignmentData.eventId,
       staffId: assignmentData.staffId,
       role: assignmentData.role,
+      supervisorId: assignmentData.supervisorId || null,
       checkInTime: null,
+      checkOutTime: null,
       checkInImage: "",
+      checkOutImage: null,
       checkInLocation: null,
+      checkOutLocation: null,
+      manualOverride: false,
+      overrideReason: null,
+      overrideApprovedBy: null,
       isLate: false,
       isAbsent: false,
       createdAt,
