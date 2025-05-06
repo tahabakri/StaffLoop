@@ -28,6 +28,9 @@ const registerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
   phone: z.string().optional(),
+  companyName: z.string().min(2, { message: "Company name must be at least 2 characters" }),
+  estimatedEvents: z.string().transform(val => parseInt(val) || 0),
+  estimatedStaff: z.string().transform(val => parseInt(val) || 0),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string().min(6, { message: "Please confirm your password" }),
 }).refine((data) => data.password === data.confirmPassword, {

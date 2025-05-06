@@ -335,7 +335,7 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async updateUserStatus(id: number, status: string): Promise<User | undefined> {
+  async updateUserStatus(id: number, status: "pending" | "active" | "suspended"): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
 
@@ -488,12 +488,231 @@ export class MemStorage implements IStorage {
       checkInTime,
       checkInImage: data.image,
       checkInLocation: data.location,
+      manualOverride: data.manualOverride || false,
+      overrideReason: data.overrideReason || null,
       isLate,
       isAbsent: false,
     };
 
     this.staffAssignments.set(assignment.id, updatedAssignment);
     return updatedAssignment;
+  }
+  
+  async checkOutStaff(data: CheckOut): Promise<StaffAssignment | undefined> {
+    const assignments = Array.from(this.staffAssignments.values());
+    const assignment = assignments.find(
+      a => a.staffId === data.staffId && a.eventId === data.eventId
+    );
+
+    if (!assignment) return undefined;
+    
+    // Ensure staff has checked in first
+    if (!assignment.checkInTime) return undefined;
+
+    const now = new Date();
+    
+    const updatedAssignment: StaffAssignment = {
+      ...assignment,
+      checkOutTime: now,
+      checkOutImage: data.image || null,
+      checkOutLocation: data.location || null,
+    };
+
+    this.staffAssignments.set(assignment.id, updatedAssignment);
+    return updatedAssignment;
+  }
+  
+  async approveOverride(assignmentId: number, approverId: number): Promise<StaffAssignment | undefined> {
+    const assignment = this.staffAssignments.get(assignmentId);
+    if (!assignment || !assignment.manualOverride) return undefined;
+    
+    // Check if approver exists and is an organizer
+    const approver = this.users.get(approverId);
+    if (!approver || approver.role !== "organizer") return undefined;
+    
+    const updatedAssignment: StaffAssignment = {
+      ...assignment,
+      overrideApprovedBy: approverId,
+    };
+
+    this.staffAssignments.set(assignmentId, updatedAssignment);
+    return updatedAssignment;
+  }
+  
+  // Onboarding survey methods
+  async getOnboardingSurvey(id: number): Promise<OnboardingSurvey | undefined> {
+    return this.onboardingSurveys.get(id);
+  }
+  
+  async getOnboardingSurveyByUserId(userId: number): Promise<OnboardingSurvey | undefined> {
+    return Array.from(this.onboardingSurveys.values()).find(
+      survey => survey.userId === userId
+    );
+  }
+  
+  async createOnboardingSurvey(surveyData: InsertOnboardingSurvey): Promise<OnboardingSurvey> {
+    const id = this.surveyIdCounter++;
+    const createdAt = new Date();
+    
+    const survey: OnboardingSurvey = {
+      id,
+      userId: surveyData.userId,
+      eventTypes: surveyData.eventTypes || null,
+      eventFrequency: surveyData.eventFrequency || null,
+      staffSize: surveyData.staffSize || null,
+      additionalInfo: surveyData.additionalInfo || null,
+      scheduledCall: surveyData.scheduledCall || null,
+      createdAt,
+    };
+    
+    this.onboardingSurveys.set(id, survey);
+    return survey;
+  }
+  
+  async updateOnboardingSurvey(id: number, surveyData: Partial<OnboardingSurvey>): Promise<OnboardingSurvey | undefined> {
+    const survey = this.onboardingSurveys.get(id);
+    if (!survey) return undefined;
+    
+    const updatedSurvey = { ...survey, ...surveyData };
+    this.onboardingSurveys.set(id, updatedSurvey);
+    return updatedSurvey;
+  }
+  
+  // Payment methods
+  async getPayment(id: number): Promise<Payment | undefined> {
+    return this.payments.get(id);
+  }
+  
+  async getPaymentByEventId(eventId: number): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(
+      payment => payment.eventId === eventId
+    );
+  }
+  
+  async createPayment(paymentData: InsertPayment): Promise<Payment> {
+    const id = this.paymentIdCounter++;
+    const createdAt = new Date();
+    
+    const payment: Payment = {
+      id,
+      eventId: paymentData.eventId,
+      organizerId: paymentData.organizerId,
+      amount: paymentData.amount,
+      staffCount: paymentData.staffCount,
+      daysCount: paymentData.daysCount,
+      rate: paymentData.rate,
+      status: "pending",
+      stripePaymentId: null,
+      paymentDate: null,
+      createdAt,
+    };
+    
+    this.payments.set(id, payment);
+    return payment;
+  }
+  
+  async updatePaymentStatus(id: number, status: string, stripeId?: string): Promise<Payment | undefined> {
+    const payment = this.payments.get(id);
+    if (!payment) return undefined;
+    
+    const paymentDate = status === "completed" ? new Date() : payment.paymentDate;
+    
+    const updatedPayment = { 
+      ...payment, 
+      status, 
+      stripePaymentId: stripeId || payment.stripePaymentId,
+      paymentDate
+    };
+    
+    this.payments.set(id, updatedPayment);
+    return updatedPayment;
+  }
+  
+  async listPayments(organizerId?: number): Promise<Payment[]> {
+    let payments = Array.from(this.payments.values());
+    if (organizerId) {
+      payments = payments.filter(payment => payment.organizerId === organizerId);
+    }
+    return payments;
+  }
+  
+  // Support ticket methods
+  async getSupportTicket(id: number): Promise<SupportTicket | undefined> {
+    return this.supportTickets.get(id);
+  }
+  
+  async createSupportTicket(ticketData: InsertSupportTicket): Promise<SupportTicket> {
+    const id = this.ticketIdCounter++;
+    const createdAt = new Date();
+    
+    const ticket: SupportTicket = {
+      id,
+      userId: ticketData.userId,
+      subject: ticketData.subject,
+      message: ticketData.message,
+      status: "open",
+      assignedTo: null,
+      createdAt,
+      closedAt: null,
+    };
+    
+    this.supportTickets.set(id, ticket);
+    return ticket;
+  }
+  
+  async updateSupportTicket(id: number, ticketData: Partial<SupportTicket>): Promise<SupportTicket | undefined> {
+    const ticket = this.supportTickets.get(id);
+    if (!ticket) return undefined;
+    
+    const updatedTicket = { ...ticket, ...ticketData };
+    this.supportTickets.set(id, updatedTicket);
+    return updatedTicket;
+  }
+  
+  async assignSupportTicket(id: number, assigneeId: number): Promise<SupportTicket | undefined> {
+    const ticket = this.supportTickets.get(id);
+    if (!ticket) return undefined;
+    
+    // Check if assignee exists and is an admin
+    const assignee = this.users.get(assigneeId);
+    if (!assignee || assignee.role !== "admin") return undefined;
+    
+    const updatedTicket = { 
+      ...ticket, 
+      assignedTo: assigneeId,
+      status: "in-progress" 
+    };
+    
+    this.supportTickets.set(id, updatedTicket);
+    return updatedTicket;
+  }
+  
+  async closeSupportTicket(id: number): Promise<SupportTicket | undefined> {
+    const ticket = this.supportTickets.get(id);
+    if (!ticket) return undefined;
+    
+    const updatedTicket = { 
+      ...ticket, 
+      status: "closed",
+      closedAt: new Date()
+    };
+    
+    this.supportTickets.set(id, updatedTicket);
+    return updatedTicket;
+  }
+  
+  async listSupportTickets(userId?: number, assignedTo?: number): Promise<SupportTicket[]> {
+    let tickets = Array.from(this.supportTickets.values());
+    
+    if (userId) {
+      tickets = tickets.filter(ticket => ticket.userId === userId);
+    }
+    
+    if (assignedTo) {
+      tickets = tickets.filter(ticket => ticket.assignedTo === assignedTo);
+    }
+    
+    return tickets;
   }
 }
 
