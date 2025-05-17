@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { RecentCheckIns } from "@/components/dashboard/recent-checkins";
 import { StaffStatusChart } from "@/components/dashboard/staff-status-chart";
@@ -41,24 +40,7 @@ export default function DashboardPage() {
   const formattedDate = formatDate(currentDate);
 
   return (
-    <DashboardLayout
-      title="Dashboard"
-      subtitle={
-        <div className="flex items-center">
-          {selectedEvent && events ? (
-            <div className="flex items-center">
-              <span className="text-primary font-medium mr-2">
-                {events.find(e => e.id.toString() === selectedEvent)?.name}
-              </span>
-              <span className="mx-2 text-gray-400">•</span>
-              <span>{formattedDate}</span>
-            </div>
-          ) : (
-            <span>{formattedDate}</span>
-          )}
-        </div>
-      }
-    >
+    <div className="space-y-6">
       {/* Event selector */}
       <div className="mb-6">
         <Select
@@ -166,6 +148,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </div>
   );
 }

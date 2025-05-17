@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { StaffList } from "@/components/staff/staff-list";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,7 @@ export default function StaffListPage() {
   };
 
   return (
-    <DashboardLayout title="Staff Management">
+    <>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-4 md:space-y-0">
         <div className="w-full md:w-64">
           <Select
@@ -157,6 +156,6 @@ export default function StaffListPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }

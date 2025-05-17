@@ -7,7 +7,7 @@ export const userRoles = ["organizer", "staff", "admin"] as const;
 export type UserRole = typeof userRoles[number];
 
 // Account Status Types
-export const accountStatus = ["pending", "active", "suspended"] as const;
+export const accountStatus = ["pending", "active", "verified", "suspended"] as const;
 export type AccountStatus = typeof accountStatus[number];
 
 // Users Table
@@ -23,7 +23,10 @@ export const users = pgTable("users", {
   estimatedEvents: integer("estimated_events"),
   estimatedStaff: integer("estimated_staff"),
   accountStatus: text("account_status").$type<AccountStatus>().default("pending"),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerifiedAt: timestamp("email_verified_at"),
   stripeCustomerId: text("stripe_customer_id"),
+  onboardingCompleted: boolean("onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

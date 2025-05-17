@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 // Login schema
 const loginSchema = z.object({
@@ -27,10 +28,7 @@ const loginSchema = z.object({
 const registerSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Please enter a valid email address" }),
-  phone: z.string().optional(),
   companyName: z.string().min(2, { message: "Company name must be at least 2 characters" }),
-  estimatedEvents: z.string().transform(val => parseInt(val) || 0),
-  estimatedStaff: z.string().transform(val => parseInt(val) || 0),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   confirmPassword: z.string().min(6, { message: "Please confirm your password" }),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -49,6 +47,7 @@ export function AuthForm({ onStaffLoginClick }: AuthFormProps) {
   const [tabValue, setTabValue] = useState<"login" | "register">("login");
   const { loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -66,10 +65,7 @@ export function AuthForm({ onStaffLoginClick }: AuthFormProps) {
     defaultValues: {
       name: "",
       email: "",
-      phone: "",
       companyName: "",
-      estimatedEvents: "",
-      estimatedStaff: "",
       password: "",
       confirmPassword: "",
     },
@@ -82,15 +78,22 @@ export function AuthForm({ onStaffLoginClick }: AuthFormProps) {
       role: "organizer",
     });
   };
-
   const onRegisterSubmit = (data: RegisterFormValues) => {
     registerMutation.mutate({
       name: data.name,
       email: data.email,
-      phone: data.phone || "",
       password: data.password,
       confirmPassword: data.confirmPassword,
       role: "organizer",
+    }, {
+      onSuccess: () => {
+        toast({
+          title: "Registration successful!",
+          description: "Please check your email to verify your account.",
+          variant: "default",
+        });
+        setLocation("/verify-email");
+      }
     });
   };
 
@@ -194,100 +197,80 @@ export function AuthForm({ onStaffLoginClick }: AuthFormProps) {
               <p className="text-gray-600 mb-8">Sign up to start managing events and staff</p>
               
               <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                <div>
-                  <Label htmlFor="register-name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </Label>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
                   <Input
-                    id="register-name"
-                    type="text"
+                    id="name"
                     placeholder="John Doe"
                     {...registerForm.register("name")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl"
                   />
                   {registerForm.formState.errors.name && (
-                    <p className="text-red-500 text-sm mt-1">{registerForm.formState.errors.name.message}</p>
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.name.message}</p>
                   )}
                 </div>
-                
-                <div>
-                  <Label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="register-email"
+                    id="email"
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder="you@company.com"
                     {...registerForm.register("email")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl"
                   />
                   {registerForm.formState.errors.email && (
-                    <p className="text-red-500 text-sm mt-1">{registerForm.formState.errors.email.message}</p>
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.email.message}</p>
                   )}
                 </div>
-                
-                <div>
-                  <Label htmlFor="register-phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number (optional)
-                  </Label>
-                  <div className="flex">
-                    <div className="px-3 py-2 border border-gray-300 rounded-l-xl bg-gray-50 text-gray-500">
-                      +971
-                    </div>
-                    <Input
-                      id="register-phone"
-                      type="tel"
-                      placeholder="5X XXX XXXX"
-                      {...registerForm.register("phone")}
-                      className="flex-1 px-4 py-2 border border-l-0 border-gray-300 rounded-r-xl"
-                    />
-                  </div>
-                  {registerForm.formState.errors.phone && (
-                    <p className="text-red-500 text-sm mt-1">{registerForm.formState.errors.phone.message}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="register-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Company/Agency Name</Label>
                   <Input
-                    id="register-password"
+                    id="companyName"
+                    placeholder="Your Company Ltd."
+                    {...registerForm.register("companyName")}
+                  />
+                  {registerForm.formState.errors.companyName && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.companyName.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
                     type="password"
-                    placeholder="••••••••"
                     {...registerForm.register("password")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl"
                   />
                   {registerForm.formState.errors.password && (
-                    <p className="text-red-500 text-sm mt-1">{registerForm.formState.errors.password.message}</p>
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.password.message}</p>
                   )}
                 </div>
-                
-                <div>
-                  <Label htmlFor="register-confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm Password
-                  </Label>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <Input
-                    id="register-confirm-password"
+                    id="confirmPassword"
                     type="password"
-                    placeholder="••••••••"
                     {...registerForm.register("confirmPassword")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl"
                   />
                   {registerForm.formState.errors.confirmPassword && (
-                    <p className="text-red-500 text-sm mt-1">{registerForm.formState.errors.confirmPassword.message}</p>
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.confirmPassword.message}</p>
                   )}
                 </div>
-                
+
                 <Button
                   type="submit"
                   className="w-full"
                   disabled={registerMutation.isPending}
                 >
                   {registerMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : null}
-                  Create Organizer Account
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
                 </Button>
               </form>
             </TabsContent>
