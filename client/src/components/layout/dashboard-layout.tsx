@@ -111,7 +111,7 @@ export function DashboardLayout() {
           </nav>
         </aside>
         {/* Main Content Area */}
-        <main className={cn("flex-1 ml-64 p-8 transition-all duration-300", blurClass)}>
+        <main className={cn("flex-1 ml-64 p-8 pt-16 transition-all duration-300", blurClass)}>
           <AnimatePresence mode="wait">
             <Outlet />
           </AnimatePresence>

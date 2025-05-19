@@ -84,7 +84,7 @@ export function Sidebar({ className }: SidebarProps) {
     <div className={`hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-gray-200 lg:bg-white ${className}`}>
       {/* Logo */}
       <div className="p-4 border-b border-gray-200">
-        <Logo />
+        <Logo className="h-10 w-auto" />
       </div>
       
       {/* Navigation */}
