@@ -15,46 +15,128 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, FileText, ChevronRight, User, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Download, FileText, ChevronRight, User, CheckCircle, Clock, XCircle, FileDown, FileSpreadsheet } from 'lucide-react';
 import { formatDate, getInitials } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import jsPDF from "jspdf";
+import * as XLSX from "xlsx";
+import { Event } from "@/types/dashboard";
 
 interface ReportGeneratorProps {
   className?: string;
+  events: Event[];
+  selectedEvent: string;
+  onEventChange: (eventId: string) => void;
 }
 
-export function ReportGenerator({ className }: ReportGeneratorProps) {
-  const [selectedEvent, setSelectedEvent] = useState<string>('');
+// Mock data for preview and past reports
+const mockStaffData = [
+  { name: "John Doe", role: "Organizer", status: "Checked In", time: "09:00 AM" },
+  { name: "Jane Smith", role: "Staff", status: "Late", time: "09:20 AM" },
+  { name: "Bob Lee", role: "Staff", status: "Absent", time: "-" },
+];
+
+const mockPastReports = [
+  { name: "Art Exhibition Report", date: "15 May 2024", type: "PDF" },
+  { name: "Music Festival Report", date: "10 May 2024", type: "Excel" },
+  { name: "Sports Event Report", date: "05 May 2024", type: "PDF" },
+];
+
+export function ReportGenerator({ className, events, selectedEvent, onEventChange }: ReportGeneratorProps) {
   const [includeFaces, setIncludeFaces] = useState(true);
   const [reportType, setReportType] = useState<string>('summary');
   const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Fetch events for the dropdown
-  const { data: events, isLoading: isLoadingEvents } = useQuery({
-    queryKey: ['/api/events'],
-  });
+  const generatePDF = async () => {
+    setIsGenerating(true);
+    try {
+      const selectedEventData = events.find(e => e.id.toString() === selectedEvent);
+      if (!selectedEventData) return;
 
-  const handleGenerateReport = () => {
-    if (!selectedEvent) {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text("Event Report", 20, 20);
+      
+      // Add event details
+      doc.setFontSize(12);
+      doc.text(`Event: ${selectedEventData.name}`, 20, 40);
+      doc.text(`Date: ${formatDate(selectedEventData.date)}`, 20, 50);
+      doc.text(`Location: ${selectedEventData.location}`, 20, 60);
+      
+      // Add attendance summary
+      doc.text("Attendance Summary", 20, 80);
+      doc.text(`Total Staff: ${selectedEventData.totalStaff}`, 20, 90);
+      doc.text(`Checked In: ${selectedEventData.checkedInStaff}`, 20, 100);
+      doc.text(`Attendance Rate: ${Math.round((selectedEventData.checkedInStaff / selectedEventData.totalStaff) * 100)}%`, 20, 110);
+
+      // Save the PDF
+      doc.save(`${selectedEventData.name}-report.pdf`);
+      
       toast({
-        title: 'Select an event',
-        description: 'Please select an event to generate a report',
-        variant: 'destructive',
+        title: "Report Downloaded",
+        description: "Your report has been downloaded as PDF.",
       });
-      return;
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF report.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
     }
+  };
 
-    toast({
-      title: 'Generating report',
-      description: 'Your report is being generated and will download shortly.',
-    });
+  const generateExcel = async () => {
+    setIsGenerating(true);
+    try {
+      const selectedEventData = events.find(e => e.id.toString() === selectedEvent);
+      if (!selectedEventData) return;
 
-    // In a real implementation, this would call an API to generate and download the report
-    setTimeout(() => {
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet([
+        {
+          "Event Name": selectedEventData.name,
+          "Date": formatDate(selectedEventData.date),
+          "Location": selectedEventData.location,
+          "Total Staff": selectedEventData.totalStaff,
+          "Checked In": selectedEventData.checkedInStaff,
+          "Attendance Rate": `${Math.round((selectedEventData.checkedInStaff / selectedEventData.totalStaff) * 100)}%`,
+        }
+      ]);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Event Report");
+
+      // Save the Excel file
+      XLSX.writeFile(wb, `${selectedEventData.name}-report.xlsx`);
+
       toast({
-        title: 'Report ready',
-        description: 'Your attendance report has been downloaded.',
+        title: "Report Downloaded",
+        description: "Your report has been downloaded as Excel.",
       });
-    }, 2000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate Excel report.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadPastReport = (report: typeof mockPastReports[0]) => {
+    toast({
+      title: "Downloading Report",
+      description: `Downloading ${report.name}...`,
+    });
   };
 
   return (
@@ -69,31 +151,18 @@ export function ReportGenerator({ className }: ReportGeneratorProps) {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Label>Select Event</Label>
-                  {isLoadingEvents ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select
-                      value={selectedEvent}
-                      onValueChange={setSelectedEvent}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an event" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {events && events.length > 0 ? (
-                          events.map((event) => (
-                            <SelectItem key={event.id} value={event.id.toString()}>
-                              {event.name} - {formatDate(event.date)}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="none" disabled>
-                            No events available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <Select value={selectedEvent} onValueChange={onEventChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an event" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {events.map((event: Event) => (
+                        <SelectItem key={event.id} value={event.id.toString()}>
+                          {event.name} - {formatDate(event.date)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -132,14 +201,51 @@ export function ReportGenerator({ className }: ReportGeneratorProps) {
                   />
                 </div>
 
-                <Button 
-                  className="w-full" 
-                  onClick={handleGenerateReport}
-                  disabled={!selectedEvent}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Generate and Download Report
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={generatePDF}
+                          disabled={!selectedEvent || isGenerating}
+                          className="w-full sm:w-auto px-8 py-3 bg-primary hover:bg-primary/90 text-white font-medium"
+                        >
+                          {isGenerating ? (
+                            <Spinner className="mr-2 h-4 w-4" />
+                          ) : (
+                            <FileDown className="mr-2 h-4 w-4" />
+                          )}
+                          Generate PDF Report
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Download report as PDF</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={generateExcel}
+                          disabled={!selectedEvent || isGenerating}
+                          className="w-full sm:w-auto px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+                        >
+                          {isGenerating ? (
+                            <Spinner className="mr-2 h-4 w-4" />
+                          ) : (
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          )}
+                          Export as Excel
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Download report as Excel</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -150,19 +256,45 @@ export function ReportGenerator({ className }: ReportGeneratorProps) {
             <CardTitle>Report Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center">
-              <div className="w-full aspect-[3/4] bg-gray-50 border border-gray-200 rounded-md mb-4 flex items-center justify-center">
-                <FileText className="h-16 w-16 text-gray-300" />
+            {selectedEvent ? (
+              <div className="max-h-64 overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Staff</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockStaffData.map((staff, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{staff.name}</TableCell>
+                        <TableCell>{staff.role}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            staff.status === "Checked In" ? "bg-green-100 text-green-800" :
+                            staff.status === "Late" ? "bg-amber-100 text-amber-800" :
+                            "bg-red-100 text-red-800"
+                          }`}>
+                            {staff.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>{staff.time}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-              <div className="text-center space-y-2">
-                <p className="text-gray-500 text-sm">
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8">
+                <FileText className="h-12 w-12 text-gray-300 mb-3" />
+                <p className="text-gray-500 text-sm text-center">
                   Select an event to preview the report format
                 </p>
-                <div className="text-xs text-gray-400">
-                  PDF format | Portrait orientation
-                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -173,14 +305,52 @@ export function ReportGenerator({ className }: ReportGeneratorProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Empty state for past reports */}
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-              <h3 className="text-lg font-medium text-gray-700 mb-1">No Previous Reports</h3>
-              <p className="text-gray-500">
-                Generated reports will appear here for easy access
-              </p>
-            </div>
+            {mockPastReports.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Report Name</TableHead>
+                    <TableHead>Date Generated</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockPastReports.map((report, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{report.name}</TableCell>
+                      <TableCell>{report.date}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          report.type === "PDF" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+                        }`}>
+                          {report.type}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownloadPastReport(report)}
+                          className="px-4 py-2 hover:bg-gray-100 transition-colors"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <h3 className="text-lg font-medium text-gray-700 mb-1">No Previous Reports</h3>
+                <p className="text-gray-500">
+                  Generated reports will appear here for easy access
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

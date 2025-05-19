@@ -1,26 +1,38 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { StatsCard } from "@/components/dashboard/stats-card";
-import { RecentCheckIns } from "@/components/dashboard/recent-checkins";
-import { StaffStatusChart } from "@/components/dashboard/staff-status-chart";
-import { StaffRoleStats } from "@/components/dashboard/staff-role-stats";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, CheckCircle, Clock, XCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Event, DashboardStats } from '@/types/dashboard';
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+
+// Import all dashboard components from the index file
+import {
+  StatsCard,
+  RecentCheckIns,
+  StaffStatusChart,
+  StaffRoleStats,
+  QuickAssignDialog,
+  RecentCheckinsTimeline,
+  TimeRangeFilter,
+  EventTimeline
+} from "@/components/dashboard";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [selectedEvent, setSelectedEvent] = useState<string>("");
 
   // Fetch events
-  const { data: events, isLoading: eventsLoading } = useQuery({
+  const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({
     queryKey: ["/api/events"],
   });
 
   // Fetch dashboard stats for selected event
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats", selectedEvent],
     enabled: !!selectedEvent,
   });
