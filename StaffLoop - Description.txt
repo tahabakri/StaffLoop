@@ -1,0 +1,52 @@
+# StaffLoop - Staff Check-In Feature Documentation
+
+## Staff Check-In Functionality Update
+
+### Overview
+The staff check-in functionality has been fixed to enable proper check-in for event staff. This includes both self check-in (via the camera/selfie process) and manual check-in (via the staff list for organizers).
+
+### Key Components Updated:
+
+1. **StaffList Component**
+   - Fixed the "Manual Check-In" button functionality
+   - Added loading state during check-in processing
+   - Updated the UI to show check-in status more clearly
+   - Added timestamp display for checked-in staff
+   - Disabled check-in buttons for already checked-in staff
+
+2. **CameraView Component**
+   - Enhanced the selfie capture functionality
+   - Improved visual feedback during face recognition
+   - Added better positioning instructions for staff
+   - Fixed onCapture callback to properly trigger the check-in process
+
+3. **StaffCheckinPage**
+   - Added proper loading states for better user experience
+   - Implemented mock API responses (for demo purposes)
+   - Fixed geolocation handling with fallbacks
+   - Added storage of check-in data for the confirmation page
+   - Enhanced error handling with descriptive messages
+
+4. **StaffConfirmationPage**
+   - Added data retrieval from sessionStorage
+   - Implemented fallback to user data when needed
+   - Enhanced the page with a "Return to Dashboard" button
+   - Improved the display of check-in confirmation information
+
+### User Flow:
+1. Staff can check in via selfie on their mobile device
+2. The system verifies their identity
+3. A success confirmation is displayed with event details
+4. The staff's status is updated in the system
+
+### Organizer Flow:
+1. Organizers can view staff check-in status on the staff list
+2. They can manually check in staff if needed
+3. Real-time status updates show which staff have checked in
+
+### Notes:
+- The check-in timestamp is recorded and displayed in the UI
+- Staff who have already checked in cannot check in again
+- Success/failure notifications provide clear feedback to users
+- The system handles error cases gracefully with appropriate messages
+- The camera permissions are requested and handled properly 

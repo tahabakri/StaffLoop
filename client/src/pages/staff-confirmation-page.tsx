@@ -3,6 +3,31 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/ui/logo";
 import { CheckInConfirmation } from "@/components/staff/check-in-confirmation";
+import { Button } from "@/components/ui/button";
+
+interface ConfirmationData {
+  staffId: number;
+  eventId: number;
+  checkInTime: string;
+  staffName: string;
+  staffRole: string;
+  staffImage?: string;
+  eventName: string;
+  eventLocation: string;
+  timeStatus: string;
+  supervisorContact?: {
+    name: string;
+    role: string;
+    image?: string;
+    phone?: string;
+  };
+  schedule?: {
+    items: {
+      title: string;
+      timeRange: string;
+    }[];
+  };
+}
 
 export default function StaffConfirmationPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -13,8 +38,8 @@ export default function StaffConfirmationPage() {
     date: "Nov 12, 2023 • 07:30 AM",
   });
 
-  // Confirmation data that would normally come from the API
-  const [confirmationData, setConfirmationData] = useState({
+  // Default confirmation data (fallback)
+  const defaultConfirmationData = {
     staffId: 0,
     eventId: 1,
     checkInTime: new Date().toISOString(),
@@ -23,7 +48,7 @@ export default function StaffConfirmationPage() {
     staffImage: "",
     eventName: "Dubai Design Week",
     eventLocation: "Dubai Exhibition Centre, Hall 2A",
-    timeStatus: "Early by 2 minutes",
+    timeStatus: "On time",
     supervisorContact: {
       name: "Fatima Al Marzooqi",
       role: "Event Manager",
@@ -36,7 +61,10 @@ export default function StaffConfirmationPage() {
         { title: "Break", timeRange: "10:00 AM - 10:30 AM" },
       ],
     },
-  });
+  };
+
+  // Confirmation data that will be populated from sessionStorage or user data
+  const [confirmationData, setConfirmationData] = useState<ConfirmationData>(defaultConfirmationData);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -44,16 +72,56 @@ export default function StaffConfirmationPage() {
       return;
     }
 
-    if (user) {
-      // Update confirmation data with user info
-      setConfirmationData(prev => ({
-        ...prev,
-        staffId: user.id,
-        staffName: user.name,
-        staffImage: user.profileImage || "",
-      }));
+    // Try to get check-in data from sessionStorage
+    try {
+      const storedData = sessionStorage.getItem('checkInData');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        
+        // Merge stored data with default data for any missing fields
+        setConfirmationData({
+          ...defaultConfirmationData,
+          ...parsedData,
+          // Ensure schedule data is available even if not in stored data
+          schedule: parsedData.schedule || defaultConfirmationData.schedule,
+          supervisorContact: parsedData.supervisorContact || defaultConfirmationData.supervisorContact
+        });
+        
+        // Update event details if available
+        if (parsedData.eventName) {
+          setEventDetails(prev => ({
+            ...prev,
+            name: parsedData.eventName
+          }));
+        }
+      } else if (user) {
+        // If no stored data but user is available, update with user info
+        setConfirmationData(prev => ({
+          ...prev,
+          staffId: user.id,
+          staffName: user.name,
+          staffRole: user.role || prev.staffRole,
+          staffImage: user.profileImage || "",
+        }));
+      }
+    } catch (error) {
+      console.error("Error retrieving check-in data:", error);
+      // Fall back to user data if available
+      if (user) {
+        setConfirmationData(prev => ({
+          ...prev,
+          staffId: user.id,
+          staffName: user.name,
+          staffRole: user.role || prev.staffRole,
+          staffImage: user.profileImage || "",
+        }));
+      }
     }
   }, [user, authLoading, setLocation]);
+
+  const handleBackToDashboard = () => {
+    setLocation("/dashboard");
+  };
 
   if (authLoading) {
     return (
@@ -76,6 +144,8 @@ export default function StaffConfirmationPage() {
       
       {/* Main Content */}
       <CheckInConfirmation confirmationData={confirmationData} />
+      
+      {/* Return to Dashboard Button removed for staff users */}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { getInitials } from "@/lib/utils";
 import { useState } from "react";
 
 export function Navbar() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [notificationCount] = useState(3);
 
   return (

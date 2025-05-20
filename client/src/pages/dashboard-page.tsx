@@ -52,9 +52,9 @@ export default function DashboardPage() {
   const formattedDate = formatDate(currentDate);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col w-full space-y-6 pb-20">
       {/* Event selector */}
-      <div className="mb-6">
+      <div className="mb-6 w-full">
         <Select
           value={selectedEvent}
           onValueChange={setSelectedEvent}
@@ -85,7 +85,7 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       {selectedEvent ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 w-full">
             <StatsCard
               title="Total Staff"
               value={stats?.totalStaff || 0}
@@ -129,7 +129,7 @@ export default function DashboardPage() {
           </div>
           
           {/* Recent Check-ins and Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 w-full">
             <RecentCheckIns eventId={parseInt(selectedEvent)} />
             <StaffStatusChart data={stats} isLoading={statsLoading} />
           </div>
@@ -145,8 +145,8 @@ export default function DashboardPage() {
           />
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center bg-white rounded-2xl shadow-card p-12">
-          <div className="text-center max-w-md">
+        <div className="w-full bg-white rounded-2xl shadow-md p-8 md:p-12">
+          <div className="text-center max-w-md mx-auto">
             <Users className="h-16 w-16 text-gray-300 mx-auto mb-6" />
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Select an Event</h2>
             <p className="text-gray-600 mb-6">

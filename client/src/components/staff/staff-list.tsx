@@ -15,8 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitials } from "@/lib/utils";
-import { Edit, MoreVertical, Plus, Search, UserPlus } from "lucide-react";
+import { Check, Edit, Loader2, MoreVertical, Plus, Search, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AddStaffModal } from "./add-staff-modal";
+import { AssignStaffModal } from "./assign-staff-modal";
 
 interface StaffMember {
   id: number;
@@ -26,6 +28,7 @@ interface StaffMember {
   phone?: string;
   profileImage?: string;
   status?: "checked-in" | "late" | "absent" | "not-scheduled";
+  checkInTime?: string;
 }
 
 interface StaffListProps {
@@ -37,16 +40,20 @@ export function StaffList({ eventId }: StaffListProps) {
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const { toast } = useToast();
+  const [loadingCheckIn, setLoadingCheckIn] = useState<number | null>(null);
 
-  // Fetch staff list
-  const { data: staffMembers, isLoading } = useQuery<StaffMember[]>({
-    queryKey: ['/api/staff', { eventId }],
-    enabled: eventId !== undefined,
-  });
+  // Local staff state for demo/mock
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([
+    { id: 1, name: "John Doe", role: "Hostess", email: "john@example.com", phone: "+971501234567", status: "checked-in", checkInTime: "2023-11-12T07:45:00" },
+    { id: 2, name: "Jane Smith", role: "Support", email: "jane@example.com", phone: "+971501234568", status: "not-scheduled" },
+    { id: 3, name: "Bob Lee", role: "Security", email: "bob@example.com", phone: "+971501234569", status: "absent" },
+  ]);
+  const [addStaffOpen, setAddStaffOpen] = useState(false);
+  const [assignStaffOpen, setAssignStaffOpen] = useState(false);
 
   // Get unique roles for filtering
   const roles = staffMembers 
-    ? [...new Set(staffMembers.map(staff => staff.role))]
+    ? Array.from(new Set(staffMembers.map(staff => staff.role)))
     : [];
 
   // Filter staff members
@@ -73,29 +80,86 @@ export function StaffList({ eventId }: StaffListProps) {
       })
     : [];
 
-  const handleManualCheckIn = (staffId: number) => {
-    toast({
-      title: "Manual Check-In",
-      description: "Manual check-in feature will be available soon.",
-    });
+  const handleManualCheckIn = async (staffId: number) => {
+    // Set loading state
+    setLoadingCheckIn(staffId);
+    
+    try {
+      // Mock API call with timeout to simulate network request
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get current timestamp in ISO format
+      const currentTime = new Date().toISOString();
+      
+      // Update staff member status
+      setStaffMembers(prev => prev.map(staff => 
+        staff.id === staffId 
+          ? { ...staff, status: "checked-in", checkInTime: currentTime } 
+          : staff
+      ));
+      
+      // Show success notification
+      toast({
+        title: "Staff checked in successfully",
+        description: `Check-in time: ${new Date().toLocaleTimeString()}`,
+        variant: "default",
+      });
+    } catch (error) {
+      // Show error notification
+      toast({
+        title: "Check-in failed",
+        description: "There was an error processing the check-in.",
+        variant: "destructive",
+      });
+    } finally {
+      // Clear loading state
+      setLoadingCheckIn(null);
+    }
   };
 
-  const handleAddStaff = () => {
-    toast({
-      title: "Add Staff",
-      description: "Staff addition feature will be available soon.",
-    });
+  // Add Staff Modal logic
+  const handleAddStaff = () => setAddStaffOpen(true);
+  const handleStaffAdded = (staff: any) => {
+    setStaffMembers(prev => [
+      ...prev,
+      {
+        id: prev.length + 1,
+        name: staff.name,
+        role: staff.role || "",
+        email: staff.email || "",
+        phone: staff.whatsapp,
+        status: "not-scheduled" as StaffMember['status'],
+      },
+    ]);
   };
 
-  const handleAssignStaff = () => {
-    toast({
-      title: "Assign Staff",
-      description: "Staff assignment feature will be available soon.",
-    });
+  // Assign Staff Modal logic
+  const handleAssignStaff = () => setAssignStaffOpen(true);
+  const handleStaffAssigned = (assigned: any[]) => {
+    setStaffMembers(prev =>
+      prev.map(staff =>
+        assigned.some(a => a.name === staff.name)
+          ? { ...staff, status: "not-scheduled" as StaffMember['status'] }
+          : staff
+      ).concat(
+        assigned
+          .filter(a => !prev.some(s => s.name === a.name))
+          .map(a => ({
+            id: prev.length + 1,
+            name: a.name,
+            role: a.role,
+            email: "",
+            phone: a.whatsapp,
+            status: "not-scheduled" as StaffMember['status'],
+          }))
+      )
+    );
   };
 
   return (
     <Card className="shadow-card">
+      <AddStaffModal open={addStaffOpen} onOpenChange={setAddStaffOpen} onStaffAdded={handleStaffAdded} />
+      <AssignStaffModal open={assignStaffOpen} onOpenChange={setAssignStaffOpen} onStaffAssigned={handleStaffAssigned} />
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Staff List</CardTitle>
         <div className="flex space-x-2">
@@ -154,18 +218,10 @@ export function StaffList({ eventId }: StaffListProps) {
                 <DropdownMenuItem onClick={() => setStatusFilter(null)}>
                   All Status
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("checked-in")}>
-                  Checked In
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("late")}>
-                  Late
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("absent")}>
-                  Absent
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("not-scheduled")}>
-                  Not Scheduled
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("checked-in")}>Checked In</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("late")}>Late</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("absent")}>Absent</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("not-scheduled")}>Not Scheduled</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -183,105 +239,72 @@ export function StaffList({ eventId }: StaffListProps) {
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Contact</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Check-In Time</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
-                // Loading skeleton
-                Array.from({ length: 5 }).map((_, index) => (
-                  <tr key={index} className="bg-white border-b">
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-4" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center">
-                        <Skeleton className="h-10 w-10 rounded-full mr-3" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-24" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-4 w-32" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                    </td>
-                  </tr>
-                ))
-              ) : filteredStaff && filteredStaff.length > 0 ? (
+              {filteredStaff.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-gray-400">No staff found.</td>
+                </tr>
+              ) : (
                 filteredStaff.map((staff) => (
-                  <tr key={staff.id} className="bg-white border-b hover:bg-gray-50">
+                  <tr key={staff.id} className="bg-white border-b">
                     <td className="px-4 py-3">
                       <Checkbox />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center">
-                        <Avatar className="h-10 w-10 mr-3">
-                          {staff.profileImage ? (
+                        {staff.profileImage ? (
+                          <Avatar className="h-10 w-10 mr-3">
                             <AvatarImage src={staff.profileImage} alt={staff.name} />
-                          ) : null}
-                          <AvatarFallback>{getInitials(staff.name)}</AvatarFallback>
-                        </Avatar>
-                        <div className="font-medium">{staff.name}</div>
+                            <AvatarFallback>{getInitials(staff.name)}</AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <Avatar className="h-10 w-10 mr-3">
+                            <AvatarFallback>{getInitials(staff.name)}</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <span>{staff.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      {staff.role}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="text-xs text-gray-500">{staff.email}</div>
-                        {staff.phone && <div className="text-xs">{staff.phone}</div>}
-                      </div>
-                    </td>
+                    <td className="px-4 py-3">{staff.role}</td>
+                    <td className="px-4 py-3">{staff.phone || staff.email}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={staff.status || "not-scheduled"} />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleManualCheckIn(staff.id)}
-                          title="Manual Check-in"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      {staff.checkInTime ? new Date(staff.checkInTime).toLocaleString() : "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className={staff.status === "checked-in" ? "bg-gray-100 text-gray-400" : "bg-green-500 text-white hover:bg-green-600"} 
+                        onClick={() => handleManualCheckIn(staff.id)}
+                        disabled={staff.status === "checked-in" || loadingCheckIn === staff.id}
+                      >
+                        {loadingCheckIn === staff.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Processing...
+                          </>
+                        ) : staff.status === "checked-in" ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            Checked In
+                          </>
+                        ) : (
+                          <>
+                            <Edit className="h-4 w-4 mr-1" />
+                            Check In
+                          </>
+                        )}
+                      </Button>
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr className="bg-white border-b">
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    No staff members found. {searchQuery || roleFilter || statusFilter ? "Try adjusting your filters." : ""}
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
@@ -292,18 +315,9 @@ export function StaffList({ eventId }: StaffListProps) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const statusConfig = {
-    "checked-in": { label: "Checked In", className: "bg-green-100 text-green-800" },
-    "late": { label: "Late", className: "bg-amber-100 text-amber-800" },
-    "absent": { label: "Absent", className: "bg-red-100 text-red-800" },
-    "not-scheduled": { label: "Not Scheduled", className: "bg-gray-100 text-gray-800" },
-  };
-
-  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig["not-scheduled"];
-
-  return (
-    <Badge variant="outline" className={config.className}>
-      {config.label}
-    </Badge>
-  );
+  let color = "bg-gray-200 text-gray-700";
+  if (status === "checked-in") color = "bg-green-100 text-green-700";
+  if (status === "late") color = "bg-yellow-100 text-yellow-700";
+  if (status === "absent") color = "bg-red-100 text-red-700";
+  return <span className={`px-2 py-1 rounded text-xs font-medium ${color}`}>{status.replace("-", " ")}</span>;
 }

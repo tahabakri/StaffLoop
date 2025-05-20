@@ -25,15 +25,21 @@ export function CameraView({ onCapture }: CameraViewProps) {
     
     const imageData = captureImage();
     if (imageData) {
-      // Simulate face detection processing
-      setTimeout(() => {
+      try {
+        // Simulate face detection processing
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Success state
         setCaptureState("success");
         
-        // After showing success, pass the image data to parent
+        // After showing success for a moment, pass the image data to parent
         setTimeout(() => {
-          onCapture(imageData);
+          if (onCapture) onCapture(imageData);
         }, 1000);
-      }, 2000);
+      } catch (error) {
+        console.error("Error processing image:", error);
+        setCaptureState("ready");
+      }
     } else {
       setCaptureState("ready");
     }
@@ -80,6 +86,11 @@ export function CameraView({ onCapture }: CameraViewProps) {
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-56 h-56 rounded-full border-2 border-dashed border-white opacity-70"></div>
                 </div>
+                
+                {/* Position guidance text */}
+                <div className="absolute bottom-4 left-0 right-0 text-center text-white bg-black bg-opacity-40 py-2">
+                  Center your face inside the circle and look directly at the camera
+                </div>
               </>
             )}
           </>
@@ -90,7 +101,7 @@ export function CameraView({ onCapture }: CameraViewProps) {
           <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-primary font-medium">Processing...</p>
+              <p className="text-primary font-medium">Verifying your identity...</p>
             </div>
           </div>
         )}
@@ -102,7 +113,8 @@ export function CameraView({ onCapture }: CameraViewProps) {
               <div className="rounded-full h-20 w-20 bg-green-100 flex items-center justify-center mx-auto mb-4">
                 <Check className="h-12 w-12 text-green-500" />
               </div>
-              <p className="text-green-500 font-medium text-lg">Match Confirmed!</p>
+              <p className="text-green-500 font-medium text-lg">Identity Verified!</p>
+              <p className="text-gray-600">Checking you in...</p>
             </div>
           </div>
         )}
@@ -112,11 +124,12 @@ export function CameraView({ onCapture }: CameraViewProps) {
         <>
           <div className="text-center text-gray-600 mb-4">
             <p>Position your face in the center</p>
+            <p className="text-sm text-gray-500">Make sure there's enough light and your face is clearly visible</p>
           </div>
           
           <Button
             onClick={handleCapture}
-            className="bg-primary hover:bg-primary-dark text-white font-medium py-3 px-8 rounded-xl transition duration-200 flex items-center justify-center"
+            className="bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-8 rounded-xl transition duration-200 flex items-center justify-center"
             disabled={cameraLoading || !!cameraError}
           >
             <Camera className="h-6 w-6 mr-2" />

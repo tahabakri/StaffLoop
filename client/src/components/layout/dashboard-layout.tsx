@@ -78,10 +78,10 @@ export function DashboardLayout() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Top Navbar */}
       <Navbar />
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Fixed Sidebar */}
         <aside className="fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 flex flex-col z-30">
-          <nav className="flex-1 py-8 px-4 flex flex-col gap-8">
+          <nav className="flex-1 py-8 px-4 flex flex-col gap-8 overflow-y-auto">
             <div>
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 pl-2">Main</div>
               <ul className="space-y-1">
@@ -110,11 +110,13 @@ export function DashboardLayout() {
             </div>
           </nav>
         </aside>
-        {/* Main Content Area */}
-        <main className={cn("flex-1 ml-64 p-8 pt-16 transition-all duration-300", blurClass)}>
-          <AnimatePresence mode="wait">
-            <Outlet />
-          </AnimatePresence>
+        {/* Main Content Area - Make it properly scrollable */}
+        <main className={cn("flex-1 ml-64 p-8 pt-16 transition-all duration-300 overflow-y-auto min-h-[calc(100vh-4rem)]", blurClass)}>
+          <div className="w-full pb-12"> {/* Container for page content */}
+            <AnimatePresence mode="wait">
+              <Outlet />
+            </AnimatePresence>
+          </div>
         </main>
         {/* Modal overlay for Welcome Checklist */}
         {showChecklist && location.pathname === "/dashboard" && (

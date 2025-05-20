@@ -265,6 +265,18 @@ export class MemStorage implements IStorage {
       endTime: "23:59",
       description: "Annual music festival featuring top local and international artists across multiple genres."
     }, organizer.id);
+
+    // Add a staff user for Jane Smith (for staff login test)
+    const hashedJanePass = await hashPassword("staffpassJane");
+    const janeSmith = await this.createUser({
+      email: "jane.smith@example.com",
+      phone: "+971501234568",
+      name: "Jane Smith",
+      password: hashedJanePass,
+      role: "staff",
+      profileImage: "",
+      confirmPassword: "staffpassJane"
+    });
   }
 
   // User methods
