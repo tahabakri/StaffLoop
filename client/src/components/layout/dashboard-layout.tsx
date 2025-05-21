@@ -111,7 +111,7 @@ export function DashboardLayout() {
           </nav>
         </aside>
         {/* Main Content Area - Make it properly scrollable */}
-        <main className={cn("flex-1 ml-64 p-8 pt-16 transition-all duration-300 overflow-y-auto min-h-[calc(100vh-4rem)]", blurClass)}>
+        <main className={cn("flex-1 ml-64 p-8 pt-24 transition-all duration-300 overflow-y-auto min-h-[calc(100vh-4rem)]", blurClass)}>
           <div className="w-full pb-12"> {/* Container for page content */}
             <AnimatePresence mode="wait">
               <Outlet />

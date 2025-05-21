@@ -54,7 +54,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col w-full space-y-6 pb-20">
       {/* Event selector */}
-      <div className="mb-6 w-full">
+      <div className="w-full">
         <Select
           value={selectedEvent}
           onValueChange={setSelectedEvent}

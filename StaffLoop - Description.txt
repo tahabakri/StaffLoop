@@ -50,3 +50,19 @@ The staff check-in functionality has been fixed to enable proper check-in for ev
 - Success/failure notifications provide clear feedback to users
 - The system handles error cases gracefully with appropriate messages
 - The camera permissions are requested and handled properly 
+
+## UI/UX Fixes
+
+### Improved Spacing Between Header and Content
+- Added increased padding (pt-24) between the header bar and main content area in the dashboard layout
+- Fixed cramped spacing for the "Select an event to view statistics" dropdown on the Dashboard page
+- Applied consistent spacing across all app tabs (Dashboard, Reports, etc.)
+- Ensured content pages do not have redundant padding that would conflict with the layout spacing 
+
+### Notification Bell Functionality
+- Implemented dropdown menu for the notification bell in the navbar
+- Added mock notifications with timestamp and read/unread status
+- Implemented "Mark all as read" functionality
+- Added visual indicators for unread notifications (blue background)
+- Included notification counter badge that shows the number of unread notifications
+- Ensured proper positioning and styling using Tailwind CSS and Shadcn UI components 
