@@ -21,7 +21,8 @@ import {
 import { formatDate } from "@/lib/utils";
 import { Event, DashboardStats } from '@/types/dashboard';
 import { useToast } from "@/hooks/use-toast";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -49,8 +50,9 @@ const recentActivities = [
 export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Fetch events
   const { data: events, isLoading: eventsLoading } = useQuery<Event[]>({
@@ -63,13 +65,7 @@ export default function DashboardPage() {
     enabled: !!selectedEvent,
   });
 
-  // Calculate attendance percentage safely
-  const calculateAttendancePercentage = (stats: DashboardStats | undefined) => {
-    if (!stats || !stats.totalStaff || stats.totalStaff === 0) return 0;
-    return Math.round((stats.checkedIn / stats.totalStaff) * 100);
-  };
-
-  // Mock staff stats by role data
+  // Mock staff stats by role data (in a real app, this would come from the API)
   const roleStats = stats?.roleStats
     ? Object.entries(stats.roleStats).map(([role, data]) => ({
         role,
@@ -80,7 +76,11 @@ export default function DashboardPage() {
     : [];
 
   // Filter events based on search and status
-  const filteredEvents = events || [];
+  const filteredEvents = events?.filter(event => {
+    const matchesSearch = event.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || event.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  }) || [];
 
   // Calculate current date for subtitle
   const currentDate = new Date();
@@ -101,7 +101,11 @@ export default function DashboardPage() {
   };
 
   const handleAssignStaff = () => {
-    navigate('/staff');
+    toast({
+      title: "Assign Staff",
+      description: "Opening staff assignment modal...",
+    });
+    // In a real app, this would open the assignment modal
   };
 
   const handleSendReminder = () => {
@@ -111,17 +115,66 @@ export default function DashboardPage() {
     });
   };
 
-  if (!user) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <div className="flex flex-col w-full space-y-6 pb-20">
       {/* Personalized Greeting */}
       <div className="mb-2">
-        <h1 className="text-2xl font-bold text-gray-800">{getGreeting()}, {user.name || 'User'}!</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{getGreeting()}, Alex!</h1>
         <p className="text-gray-500 text-sm">Today is {dayOfWeek}, {formattedDate}</p>
       </div>
+
+      {/* Overview Section */}
+      <section className="w-full mb-6">
+        <h2 className="text-xl font-semibold mb-4">Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-white shadow-md rounded-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 mb-1">Events this month</p>
+                  <h3 className="text-2xl font-bold">5 Events</h3>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <Calendar className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-md rounded-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 mb-1">Total check-ins this month</p>
+                  <h3 className="text-2xl font-bold">120 Check-Ins</h3>
+                </div>
+                <div className="p-3 bg-green-100 rounded-full">
+                  <CheckSquare className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-md rounded-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 mb-1">Upcoming events (7 days)</p>
+                  <h3 className="text-2xl font-bold">3 Upcoming Events</h3>
+                </div>
+                <div className="p-3 bg-amber-100 rounded-full">
+                  <Clock className="h-6 w-6 text-amber-600" />
+                </div>
+              </div>
+              {/* Weather widget for upcoming event */}
+              <div className="mt-2 flex items-center">
+                <Sun className="h-4 w-4 text-amber-500 mr-2" />
+                <span className="text-sm text-gray-600">Summer Festival in Dubai - 32°C, Sunny</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
       {/* Quick Actions */}
       <section className="w-full mb-6">
@@ -148,6 +201,36 @@ export default function DashboardPage() {
             <Bell className="h-4 w-4 mr-2" />
             Send Reminder
           </Button>
+        </div>
+      </section>
+
+      {/* Filter and Search */}
+      <section className="w-full mb-6">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="w-full md:w-auto flex-grow">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input 
+                placeholder="Search events..." 
+                className="pl-10" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="w-full md:w-auto flex flex-col md:flex-row gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+                <SelectItem value="ongoing">Active</SelectItem>
+                <SelectItem value="completed">Ended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </section>
 
@@ -209,7 +292,7 @@ export default function DashboardPage() {
             <StatsCard
               title="Checked In"
               value={stats?.checkedIn || 0}
-              subtitle={`${calculateAttendancePercentage(stats)}% attendance`}
+              subtitle={`${stats && stats.totalStaff > 0 ? Math.round((stats.checkedIn / stats.totalStaff) * 100) : 0}% attendance`}
               icon={<CheckCircle className="h-6 w-6" />}
               iconBgColor="bg-green-100"
               iconColor="text-green-500"

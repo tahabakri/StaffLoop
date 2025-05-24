@@ -14,6 +14,8 @@ import StaffConfirmationPage from "@/pages/staff-confirmation-page";
 import DashboardPage from "@/pages/dashboard-page";
 import StaffListPage from "@/pages/staff-list-page";
 import EventSetupPage from "@/pages/event-setup-page";
+import EventListPage from "@/pages/event-list-page";
+import EventManageDetailPage from "@/pages/event-manage-detail-page";
 import ReportPage from "@/pages/report-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentsPage from "@/pages/payments-page";
@@ -38,7 +40,10 @@ function App() {
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/staff" element={<StaffListPage />} />
-                <Route path="/events" element={<EventSetupPage />} />
+                <Route path="/events" element={<EventListPage />} />
+                <Route path="/events/new" element={<EventSetupPage />} />
+                <Route path="/events/:eventId/edit" element={<EventSetupPage />} />
+                <Route path="/events/:eventId/manage" element={<EventManageDetailPage />} />
                 <Route path="/reports" element={<ReportPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />

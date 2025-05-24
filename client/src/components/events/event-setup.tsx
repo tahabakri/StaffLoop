@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,10 +65,16 @@ const initialEventData: EventData = {
   roles: [],
 };
 
-export function EventSetup() {
+interface EventSetupProps {
+  eventId?: string;
+  isEditMode?: boolean;
+}
+
+export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [eventData, setEventData] = useState<EventData>(initialEventData);
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(isEditMode);
   const [showNewStaffDialog, setShowNewStaffDialog] = useState(false);
   const [staffSearch, setStaffSearch] = useState("");
   const [isStaffLoading, setIsStaffLoading] = useState(false);
@@ -82,6 +88,60 @@ export function EventSetup() {
     { id: 4, title: "Assign Staff" },
     { id: 5, title: "Review and Confirm" },
   ];
+
+  // Fetch event data if in edit mode
+  useEffect(() => {
+    if (isEditMode && eventId) {
+      const fetchEventData = async () => {
+        setIsLoading(true);
+        try {
+          // In a real app, this would be an API call
+          // const response = await fetch(`/api/events/${eventId}`);
+          // const data = await response.json();
+          
+          // For now, we'll use mock data
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Mock data for editing - in a real app, this would come from the API
+          const mockEventData: EventData = {
+            name: `Event #${eventId}`,
+            location: "Dubai World Trade Centre",
+            isMultiDay: true,
+            startDate: format(new Date(), "yyyy-MM-dd"),
+            endDate: format(addDays(new Date(), 2), "yyyy-MM-dd"),
+            schedule: {
+              startTime: "10:00",
+              endTime: "18:00",
+            },
+            description: "This is a mock event for editing demonstration",
+            roles: [
+              {
+                name: "Security",
+                staffCount: 5,
+                assignedStaff: mockStaffList.slice(0, 2),
+              }
+            ],
+          };
+          
+          setEventData(mockEventData);
+          toast({
+            title: "Event loaded",
+            description: "Event details have been loaded for editing.",
+          });
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to load event details. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchEventData();
+    }
+  }, [isEditMode, eventId, toast]);
 
   const validateStep = (step: number): boolean => {
     switch (step) {
@@ -154,18 +214,32 @@ export function EventSetup() {
     try {
       // Mock API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-      toast({
-        title: "Success",
-        description: "Event created and added to dropdown!",
-      });
+      
+      if (isEditMode) {
+        toast({
+          title: "Success",
+          description: "Event updated successfully!",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Event created and added to dropdown!",
+        });
+      }
+      
       // Invalidate events query so dropdowns update
       await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      setEventData(initialEventData);
-      setCurrentStep(1);
+      
+      if (!isEditMode) {
+        setEventData(initialEventData);
+        setCurrentStep(1);
+      }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create event. Please try again.",
+        description: isEditMode 
+          ? "Failed to update event. Please try again." 
+          : "Failed to create event. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -500,6 +574,9 @@ export function EventSetup() {
     }
   };
 
+  // Update the final button text based on edit mode
+  const finalButtonText = isEditMode ? "Update Event" : "Create Event";
+
   return (
     <div className="max-w-3xl mx-auto">
       <Card>
@@ -565,7 +642,7 @@ export function EventSetup() {
                   {isCreating ? (
                     <Spinner className="mr-2 h-4 w-4" />
                   ) : (
-                    "Create Event"
+                    finalButtonText
                   )}
                 </Button>
               ) : (

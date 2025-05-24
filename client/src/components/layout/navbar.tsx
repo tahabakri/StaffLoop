@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/ui/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BellIcon, Check, Clock } from "lucide-react";
+import { BellIcon, Check, Clock, User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { useState } from "react";
 import {
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock notification data
 interface Notification {
@@ -45,8 +46,10 @@ const mockNotifications: Notification[] = [
 
 export function Navbar() {
   const { user, isLoading } = useAuth();
+  const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   // Count unread notifications
   const notificationCount = notifications.filter(n => !n.read).length;
@@ -54,6 +57,26 @@ export function Navbar() {
   // Mark all notifications as read
   const markAllAsRead = () => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
+  };
+  
+  // Handle profile actions
+  const handleProfileAction = (action: string) => {
+    switch (action) {
+      case "profile":
+        window.location.href = "/profile";
+        break;
+      case "settings":
+        window.location.href = "/settings";
+        break;
+      case "logout":
+        toast({
+          title: "Logged out",
+          description: "You have been logged out successfully.",
+        });
+        // In a real app, this would call an actual logout function
+        window.location.href = "/";
+        break;
+    }
   };
 
   return (
@@ -66,7 +89,7 @@ export function Navbar() {
 
         {/* Right Aligned Items (Notifications, Profile) */}
         <div className="flex items-center space-x-4">
-          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenu open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
             <DropdownMenuTrigger asChild>
               <button 
                 className="w-10 h-10 rounded-full text-gray-500 hover:bg-gray-100 flex items-center justify-center relative"
@@ -128,20 +151,49 @@ export function Navbar() {
           </DropdownMenu>
 
           {user && (
-            <div className="flex items-center">
-              <Avatar className="w-10 h-10 mr-3">
-                {user.profileImage ? (
-                  <AvatarImage src={user.profileImage} alt={user.name} />
-                ) : null}
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
-              <div className="text-sm">
-                <div className="font-medium">{user.name}</div>
-                <div className="text-gray-500">
-                  {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                </div>
-              </div>
-            </div>
+            <DropdownMenu open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="flex items-center space-x-3 p-1 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                  aria-label="User profile menu"
+                >
+                  <Avatar className="w-10 h-10">
+                    {user.profileImage ? (
+                      <AvatarImage src={user.profileImage} alt={user.name} />
+                    ) : null}
+                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="text-sm hidden md:block">
+                    <div className="flex items-center">
+                      <span className="font-medium">{user.name}</span>
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    </div>
+                    <div className="text-gray-500">
+                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    </div>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => handleProfileAction("profile")}>
+                    <User className="h-4 w-4 mr-2" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleProfileAction("settings")}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleProfileAction("logout")}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
