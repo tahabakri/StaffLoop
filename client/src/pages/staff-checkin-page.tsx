@@ -1,18 +1,26 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { getCurrentLocation } from "@/lib/camera-utils";
 import { apiRequest } from "@/lib/queryClient";
 import { Logo } from "@/components/ui/logo";
 import { CameraView } from "@/components/staff/camera-view";
+import { OtpVerification } from "@/components/staff/OtpVerification";
+import { FacialEnrollment } from "@/components/staff/FacialEnrollment";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { checkIn, CheckInRequest } from "@/lib/api/attendance";
 
 interface EventDetails {
   name: string;
   date: string;
   eventId?: number;
+}
+
+interface StaffStatus {
+  isOtpVerifiedForInitialEnrollment: boolean;
+  isFacialEnrolled: boolean;
 }
 
 export default function StaffCheckinPage() {
@@ -24,37 +32,64 @@ export default function StaffCheckinPage() {
     date: "Nov 12, 2023 • 07:30 AM",
     eventId: 1, // Default event ID
   });
+  
+  const [currentView, setCurrentView] = useState<"loading" | "otp" | "facial" | "checkin">("loading");
+
+  // Fetch staff enrollment status
+  const { data: staffStatus, isLoading: statusLoading } = useQuery<StaffStatus>({
+    queryKey: ["/api/staff", user?.id, "status"],
+    queryFn: async () => {
+      if (!user?.id) throw new Error("User not authenticated");
+      const response = await apiRequest("GET", `/api/staff/${user.id}/status`);
+      return response.json();
+    },
+    enabled: !!user?.id,
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
       setLocation("/staff-login");
+      return;
     }
-  }, [user, authLoading, setLocation]);
+
+    // Check if user has already checked in for this event
+    try {
+      const storedData = sessionStorage.getItem('checkInData');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        const storedEventId = parsedData.eventId;
+        
+        // If the stored event is the same as the current one and the user has checked in
+        if (storedEventId === (eventDetails.eventId || 1) && parsedData.checkInTime) {
+          // Redirect to confirmation page
+          setLocation("/staff-confirmation");
+        }
+      }
+    } catch (error) {
+      console.error("Error checking stored check-in data:", error);
+    }
+  }, [user, authLoading, setLocation, eventDetails.eventId]);
+
+  // Determine which view to show based on enrollment status
+  useEffect(() => {
+    if (!statusLoading && staffStatus) {
+      if (staffStatus.isFacialEnrolled) {
+        // Face is already enrolled - show normal check-in
+        setCurrentView("checkin");
+      } else if (staffStatus.isOtpVerifiedForInitialEnrollment) {
+        // OTP is verified but face is not enrolled
+        setCurrentView("facial");
+      } else {
+        // Neither OTP nor face is enrolled
+        setCurrentView("otp");
+      }
+    }
+  }, [statusLoading, staffStatus]);
 
   const checkInMutation = useMutation({
-    mutationFn: async (data: {
-      staffId: number;
-      eventId: number;
-      image: string;
-      location: { latitude: number; longitude: number };
-    }) => {
-      try {
-        // For demo purposes, simulate a successful API call
-        // In a real app, this would be an actual API request
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Return a mock successful response
-        return {
-          success: true,
-          staffId: data.staffId,
-          eventId: data.eventId,
-          checkInTime: new Date().toISOString(),
-          message: "Check-in successful"
-        };
-      } catch (error) {
-        console.error("Error during check-in:", error);
-        throw new Error("Failed to check in. Please try again.");
-      }
+    mutationFn: async (data: CheckInRequest) => {
+      // Use the API function for check-in
+      return await checkIn(data);
     },
     onSuccess: (data) => {
       toast({
@@ -122,7 +157,15 @@ export default function StaffCheckinPage() {
     });
   };
 
-  if (authLoading) {
+  const handleOtpSuccess = () => {
+    setCurrentView("facial");
+  };
+
+  const handleFacialEnrollmentSuccess = () => {
+    setCurrentView("checkin");
+  };
+
+  if (authLoading || statusLoading || currentView === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -143,21 +186,40 @@ export default function StaffCheckinPage() {
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col p-4">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-800">Check In</h1>
-          <p className="text-gray-600">Take a selfie to mark your attendance</p>
-        </div>
+        {currentView === "otp" && user && (
+          <OtpVerification 
+            staffId={user.id} 
+            phone={user.phone || ""} 
+            onVerificationSuccess={handleOtpSuccess} 
+          />
+        )}
         
-        {checkInMutation.isPending ? (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="h-16 w-16 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-lg font-medium text-gray-800">Processing your check-in...</p>
-              <p className="text-gray-500">Please wait a moment</p>
+        {currentView === "facial" && user && (
+          <FacialEnrollment 
+            staffId={user.id} 
+            onEnrollmentSuccess={handleFacialEnrollmentSuccess} 
+          />
+        )}
+        
+        {currentView === "checkin" && (
+          <>
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold text-gray-800">Check In</h1>
+              <p className="text-gray-600">Take a selfie to mark your attendance</p>
             </div>
-          </div>
-        ) : (
-          <CameraView onCapture={handleCapture} />
+            
+            {checkInMutation.isPending ? (
+              <div className="flex-1 flex flex-col items-center justify-center">
+                <div className="text-center">
+                  <Loader2 className="h-16 w-16 animate-spin mx-auto mb-4 text-primary" />
+                  <p className="text-lg font-medium text-gray-800">Processing your check-in...</p>
+                  <p className="text-gray-500">Please wait a moment</p>
+                </div>
+              </div>
+            ) : (
+              <CameraView onCapture={handleCapture} />
+            )}
+          </>
         )}
       </div>
     </div>

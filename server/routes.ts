@@ -195,6 +195,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Staff Status Endpoint
+  app.get("/api/staff/:staffId/status", requireAuth, async (req, res) => {
+    try {
+      const staffId = parseInt(req.params.staffId);
+      
+      // Verify the user is checking their own status
+      if (req.user.id !== staffId) {
+        return res.status(403).json({ message: "You can only check your own status" });
+      }
+      
+      const user = await storage.getUser(staffId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "Staff not found" });
+      }
+      
+      res.status(200).json({
+        isOtpVerifiedForInitialEnrollment: user.isOtpVerifiedForInitialEnrollment || false,
+        isFacialEnrolled: user.isFacialEnrolled || false
+      });
+    } catch (error) {
+      console.error("Error retrieving staff status:", error);
+      res.status(500).json({ message: "Failed to retrieve staff status" });
+    }
+  });
+
+  // Staff OTP Verification Endpoint
+  app.post("/api/staff/:staffId/verify-otp", requireAuth, async (req, res) => {
+    try {
+      const staffId = parseInt(req.params.staffId);
+      
+      // Verify the user is verifying themselves
+      if (req.user.id !== staffId) {
+        return res.status(403).json({ message: "You can only verify yourself" });
+      }
+      
+      // For demo purposes, we accept any OTP
+      // In a real app, this would validate the OTP against what was sent
+      const otp = req.body.otp;
+      if (!otp || otp.length !== 6) {
+        return res.status(400).json({ message: "Invalid OTP format" });
+      }
+      
+      // Update the OTP verification status
+      const updatedUser = await storage.updateStaffOtpVerification(staffId, true);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "Staff not found" });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: "OTP verification successful"
+      });
+    } catch (error) {
+      console.error("Error during OTP verification:", error);
+      res.status(500).json({ message: "Failed to verify OTP" });
+    }
+  });
+
+  // Staff Facial Enrollment Endpoint
+  app.post("/api/staff/:staffId/enroll-face", requireAuth, async (req, res) => {
+    try {
+      const staffId = parseInt(req.params.staffId);
+      
+      // Verify the user is enrolling themselves
+      if (req.user.id !== staffId) {
+        return res.status(403).json({ message: "You can only enroll yourself" });
+      }
+      
+      // For demo purposes, we accept any image
+      // In a real app, this would validate and process the facial data
+      const image = req.body.image;
+      if (!image) {
+        return res.status(400).json({ message: "Invalid image data" });
+      }
+      
+      // Update the facial enrollment status
+      const updatedUser = await storage.updateStaffFacialEnrollment(staffId, true);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "Staff not found" });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: "Facial enrollment successful"
+      });
+    } catch (error) {
+      console.error("Error during facial enrollment:", error);
+      res.status(500).json({ message: "Failed to enroll facial data" });
+    }
+  });
+
   // CSV Upload for Staff/Events
   app.post("/api/upload/staff", requireOrganizer, upload.single("file"), async (req, res) => {
     try {

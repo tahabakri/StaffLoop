@@ -27,6 +27,8 @@ export const users = pgTable("users", {
   emailVerifiedAt: timestamp("email_verified_at"),
   stripeCustomerId: text("stripe_customer_id"),
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  isOtpVerifiedForInitialEnrollment: boolean("is_otp_verified_for_initial_enrollment").default(false),
+  isFacialEnrolled: boolean("is_facial_enrolled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

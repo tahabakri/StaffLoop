@@ -11,6 +11,8 @@ import AuthPage from "@/pages/auth-page";
 import StaffLoginPage from "@/pages/staff-login-page";
 import StaffCheckinPage from "@/pages/staff-checkin-page";
 import StaffConfirmationPage from "@/pages/staff-confirmation-page";
+import MySchedulePage from "@/pages/staff/my-schedule-page";
+import AttendanceHistoryPage from "@/pages/staff/attendance-history-page";
 import DashboardPage from "@/pages/dashboard-page";
 import StaffListPage from "@/pages/staff-list-page";
 import EventSetupPage from "@/pages/event-setup-page";
@@ -20,6 +22,7 @@ import ReportPage from "@/pages/report-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentsPage from "@/pages/payments-page";
 import HelpPage from "@/pages/help-page";
+import AutomatedMessagesPage from "@/pages/automated-messages-page";
 
 function App() {
   return (
@@ -32,6 +35,10 @@ function App() {
             <Route path="/staff-login" element={<StaffLoginPage />} />
             <Route path="/staff-checkin" element={<StaffCheckinPage />} />
             <Route path="/staff-confirmation" element={<StaffConfirmationPage />} />
+            
+            {/* Staff pages */}
+            <Route path="/staff/my-schedule" element={<MySchedulePage />} />
+            <Route path="/staff/attendance-history" element={<AttendanceHistoryPage />} />
 
             {/* Redirect root to /dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -44,6 +51,7 @@ function App() {
                 <Route path="/events/new" element={<EventSetupPage />} />
                 <Route path="/events/:eventId/edit" element={<EventSetupPage />} />
                 <Route path="/events/:eventId/manage" element={<EventManageDetailPage />} />
+                <Route path="/messages" element={<AutomatedMessagesPage />} />
                 <Route path="/reports" element={<ReportPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/payments" element={<PaymentsPage />} />

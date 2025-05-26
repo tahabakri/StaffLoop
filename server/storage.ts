@@ -297,27 +297,34 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(userData: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const createdAt = new Date();
+    const { confirmPassword, ...userDataWithoutConfirm } = userData;
     
-    const user: User = {
+    const id = this.userIdCounter++;
+    const now = new Date();
+    
+    const newUser: User = {
       id,
-      email: userData.email,
-      phone: userData.phone || "",
-      name: userData.name,
-      password: userData.password,
-      role: (userData.role as "organizer" | "staff" | "admin") || "staff",
-      profileImage: userData.profileImage || "",
-      companyName: userData.companyName || null,
-      estimatedEvents: userData.estimatedEvents || null,
-      estimatedStaff: userData.estimatedStaff || null,
-      accountStatus: userData.role === "organizer" ? "pending" : "active",
-      stripeCustomerId: null,
-      createdAt,
+      email: userDataWithoutConfirm.email,
+      phone: userDataWithoutConfirm.phone || null,
+      name: userDataWithoutConfirm.name,
+      password: userDataWithoutConfirm.password,
+      role: userDataWithoutConfirm.role || "staff",
+      profileImage: userDataWithoutConfirm.profileImage || null,
+      companyName: userDataWithoutConfirm.companyName || null,
+      estimatedEvents: userDataWithoutConfirm.estimatedEvents || null,
+      estimatedStaff: userDataWithoutConfirm.estimatedStaff || null,
+      accountStatus: userDataWithoutConfirm.accountStatus || "pending",
+      emailVerificationToken: userDataWithoutConfirm.emailVerificationToken || null,
+      emailVerifiedAt: userDataWithoutConfirm.emailVerifiedAt || null,
+      stripeCustomerId: userDataWithoutConfirm.stripeCustomerId || null,
+      onboardingCompleted: userDataWithoutConfirm.onboardingCompleted || false,
+      isOtpVerifiedForInitialEnrollment: userDataWithoutConfirm.isOtpVerifiedForInitialEnrollment || false,
+      isFacialEnrolled: userDataWithoutConfirm.isFacialEnrolled || false,
+      createdAt: now,
     };
-
-    this.users.set(id, user);
-    return user;
+    
+    this.users.set(id, newUser);
+    return newUser;
   }
 
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
@@ -357,10 +364,40 @@ export class MemStorage implements IStorage {
   }
 
   async updateStripeCustomerId(id: number, stripeId: string): Promise<User | undefined> {
-    const user = this.users.get(id);
+    const user = await this.getUser(id);
     if (!user) return undefined;
 
-    const updatedUser = { ...user, stripeCustomerId: stripeId };
+    const updatedUser = {
+      ...user,
+      stripeCustomerId: stripeId,
+    };
+
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateStaffOtpVerification(id: number, isVerified: boolean): Promise<User | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+
+    const updatedUser = {
+      ...user,
+      isOtpVerifiedForInitialEnrollment: isVerified,
+    };
+
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async updateStaffFacialEnrollment(id: number, isEnrolled: boolean): Promise<User | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+
+    const updatedUser = {
+      ...user,
+      isFacialEnrolled: isEnrolled,
+    };
+
     this.users.set(id, updatedUser);
     return updatedUser;
   }

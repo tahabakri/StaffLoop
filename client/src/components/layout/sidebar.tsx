@@ -10,7 +10,8 @@ import {
   FileText, 
   Settings, 
   HelpCircle,
-  LogOut
+  LogOut,
+  MessageSquare
 } from "lucide-react";
 
 interface SidebarProps {
@@ -46,6 +47,12 @@ export function Sidebar({ className }: SidebarProps) {
           label: "Events",
           path: "/events",
           active: isActive("/events"),
+        },
+        {
+          icon: <MessageSquare className="h-5 w-5 mr-3" />,
+          label: "Messages 📱",
+          path: "/messages",
+          active: isActive("/messages"),
         },
         {
           icon: <FileText className="h-5 w-5 mr-3" />,
@@ -84,7 +91,9 @@ export function Sidebar({ className }: SidebarProps) {
     <div className={`hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-gray-200 lg:bg-white ${className}`}>
       {/* Logo */}
       <div className="p-4 border-b border-gray-200">
-        <Logo className="h-10 w-auto" />
+        <div className="h-10">
+          <Logo />
+        </div>
       </div>
       
       {/* Navigation */}

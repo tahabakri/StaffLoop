@@ -9,6 +9,7 @@ interface ConfirmationData {
   staffId: number;
   eventId: number;
   checkInTime: string;
+  clockOutTime?: string;
   staffName: string;
   staffRole: string;
   staffImage?: string;
@@ -29,6 +30,8 @@ interface ConfirmationData {
   };
 }
 
+type StaffStatus = 'notCheckedIn' | 'checkedIn' | 'clockedOut';
+
 export default function StaffConfirmationPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -37,6 +40,9 @@ export default function StaffConfirmationPage() {
     name: "Dubai Design Week",
     date: "Nov 12, 2023 • 07:30 AM",
   });
+
+  // Track the staff's current status for the event
+  const [staffStatus, setStaffStatus] = useState<StaffStatus>('checkedIn');
 
   // Default confirmation data (fallback)
   const defaultConfirmationData = {
@@ -77,6 +83,13 @@ export default function StaffConfirmationPage() {
       const storedData = sessionStorage.getItem('checkInData');
       if (storedData) {
         const parsedData = JSON.parse(storedData);
+        
+        // Determine staff status based on data
+        if (parsedData.clockOutTime) {
+          setStaffStatus('clockedOut');
+        } else {
+          setStaffStatus('checkedIn');
+        }
         
         // Merge stored data with default data for any missing fields
         setConfirmationData({
@@ -119,6 +132,11 @@ export default function StaffConfirmationPage() {
     }
   }, [user, authLoading, setLocation]);
 
+  // Handle status change from check-in confirmation component
+  const handleStatusChange = (newStatus: 'checkedIn' | 'clockedOut') => {
+    setStaffStatus(newStatus);
+  };
+
   const handleBackToDashboard = () => {
     setLocation("/dashboard");
   };
@@ -143,7 +161,10 @@ export default function StaffConfirmationPage() {
       </div>
       
       {/* Main Content */}
-      <CheckInConfirmation confirmationData={confirmationData} />
+      <CheckInConfirmation 
+        confirmationData={confirmationData} 
+        onStatusChange={handleStatusChange}
+      />
       
       {/* Return to Dashboard Button removed for staff users */}
     </div>
