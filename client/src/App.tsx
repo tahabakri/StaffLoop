@@ -11,6 +11,7 @@ import AuthPage from "@/pages/auth-page";
 import StaffLoginPage from "@/pages/staff-login-page";
 import StaffCheckinPage from "@/pages/staff-checkin-page";
 import StaffConfirmationPage from "@/pages/staff-confirmation-page";
+import SupervisorAccessPage from "@/pages/SupervisorAccessPage";
 import MySchedulePage from "@/pages/staff/my-schedule-page";
 import AttendanceHistoryPage from "@/pages/staff/attendance-history-page";
 import DashboardPage from "@/pages/dashboard-page";
@@ -35,6 +36,7 @@ function App() {
             <Route path="/staff-login" element={<StaffLoginPage />} />
             <Route path="/staff-checkin" element={<StaffCheckinPage />} />
             <Route path="/staff-confirmation" element={<StaffConfirmationPage />} />
+            <Route path="/supervisor-access" element={<SupervisorAccessPage />} />
             
             {/* Staff pages */}
             <Route path="/staff/my-schedule" element={<MySchedulePage />} />

@@ -11,7 +11,9 @@ import {
   Settings, 
   HelpCircle,
   LogOut,
-  MessageSquare
+  MessageSquare,
+  BarChart,
+  ClipboardList
 } from "lucide-react";
 
 interface SidebarProps {
@@ -22,7 +24,10 @@ export function Sidebar({ className }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const { user, logoutMutation } = useAuth();
 
-  const isActive = (path: string) => {
+  const isActive = (path: string, matchSubRoutes = false) => {
+    if (matchSubRoutes) {
+      return location.startsWith(path);
+    }
     return location === path;
   };
 
@@ -46,16 +51,16 @@ export function Sidebar({ className }: SidebarProps) {
           icon: <Calendar className="h-5 w-5 mr-3" />,
           label: "Events",
           path: "/events",
-          active: isActive("/events"),
+          active: isActive("/events", true),
         },
         {
-          icon: <MessageSquare className="h-5 w-5 mr-3" />,
-          label: "Messages 📱",
+          icon: <ClipboardList className="h-5 w-5 mr-3" />,
+          label: "Templates",
           path: "/messages",
           active: isActive("/messages"),
         },
         {
-          icon: <FileText className="h-5 w-5 mr-3" />,
+          icon: <BarChart className="h-5 w-5 mr-3" />,
           label: "Reports",
           path: "/reports",
           active: isActive("/reports"),

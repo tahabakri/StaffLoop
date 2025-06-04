@@ -10,7 +10,8 @@ import {
   checkOutSchema,
   insertOnboardingSurveySchema,
   insertPaymentSchema,
-  insertSupportTicketSchema
+  insertSupportTicketSchema,
+  createSupervisorAccessTokenSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -741,6 +742,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error approving organizer:", error);
       res.status(500).json({ message: "Failed to approve organizer" });
+    }
+  });
+
+  // Supervisor Access Token Routes
+  app.post("/api/supervisor-access", requireOrganizer, async (req, res) => {
+    try {
+      const tokenData = createSupervisorAccessTokenSchema.parse(req.body);
+      const newToken = await storage.createSupervisorAccessToken(tokenData);
+      
+      // Remove the token from the response for security
+      const { accessToken, ...safeTokenData } = newToken;
+      
+      res.status(201).json({
+        ...safeTokenData,
+        accessToken: `${accessToken.substring(0, 8)}...${accessToken.substring(accessToken.length - 8)}` // Only show part of the token
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      console.error("Error creating supervisor access token:", error);
+      res.status(500).json({ message: "Failed to create supervisor access token" });
+    }
+  });
+  
+  // Supervisor token validation endpoint
+  app.post("/api/auth/supervisor/validate-token", async (req, res) => {
+    try {
+      const { accessToken } = req.body;
+      
+      if (!accessToken) {
+        return res.status(400).json({ message: "Access token is required" });
+      }
+      
+      const token = await storage.getSupervisorAccessToken(accessToken);
+      
+      if (!token) {
+        return res.status(404).json({ message: "Invalid access token" });
+      }
+      
+      if (!token.isActive) {
+        return res.status(403).json({ message: "Access token is no longer active" });
+      }
+      
+      if (new Date() > token.expiresAt) {
+        return res.status(403).json({ message: "Access token has expired" });
+      }
+      
+      // Get the event and team details
+      const event = await storage.getEvent(token.eventId);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      // Get the supervisor details
+      const supervisor = await storage.getUser(token.supervisorStaffId);
+      if (!supervisor) {
+        return res.status(404).json({ message: "Supervisor not found" });
+      }
+      
+      // Create a session for the supervisor
+      // In a real app, you might use JWT tokens or other mechanisms
+      if (req.session) {
+        req.session.supervisorToken = {
+          eventId: token.eventId,
+          teamId: token.teamId,
+          supervisorId: token.supervisorStaffId,
+          tokenId: token.id
+        };
+      }
+      
+      res.json({
+        success: true,
+        eventId: token.eventId,
+        teamId: token.teamId,
+        supervisorId: token.supervisorStaffId,
+        eventName: event.name,
+        supervisorName: supervisor.name
+      });
+    } catch (error) {
+      console.error("Error validating supervisor token:", error);
+      res.status(500).json({ message: "Failed to validate access token" });
+    }
+  });
+  
+  // Supervisor access middleware - ensures requests are from a valid supervisor session
+  const requireSupervisorAccess = (req, res, next) => {
+    if (!req.session || !req.session.supervisorToken) {
+      return res.status(401).json({ message: "Supervisor authentication required" });
+    }
+    
+    const { eventId, teamId, supervisorId } = req.session.supervisorToken;
+    
+    // Add the supervisor context to the request for downstream handlers
+    req.supervisorContext = {
+      eventId,
+      teamId,
+      supervisorId
+    };
+    
+    next();
+  };
+  
+  // Get team staff attendance (scoped to supervisor's team)
+  app.get("/api/events/:eventId/teams/:teamId/staff-attendance", requireSupervisorAccess, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      const teamId = parseInt(req.params.teamId);
+      
+      // Ensure supervisor is requesting data for their assigned team
+      if (eventId !== req.supervisorContext.eventId || teamId !== req.supervisorContext.teamId) {
+        return res.status(403).json({ message: "Not authorized to access this team's data" });
+      }
+      
+      // Get all staff assignments for this event
+      const allAssignments = await storage.listStaffAssignments(eventId);
+      
+      // Filter to only include assignments for this team
+      const teamAssignments = allAssignments.filter(assignment => assignment.teamId === teamId);
+      
+      // Get staff details for each assignment
+      const staffDetailsPromises = teamAssignments.map(async (assignment) => {
+        const staffMember = await storage.getUser(assignment.staffId);
+        
+        if (!staffMember) {
+          return null;
+        }
+        
+        // Remove sensitive information
+        const { password, ...safeStaffInfo } = staffMember;
+        
+        return {
+          assignment,
+          staff: safeStaffInfo
+        };
+      });
+      
+      const staffDetails = (await Promise.all(staffDetailsPromises)).filter(Boolean);
+      
+      res.json(staffDetails);
+    } catch (error) {
+      console.error("Error fetching team staff attendance:", error);
+      res.status(500).json({ message: "Failed to fetch team staff attendance" });
+    }
+  });
+  
+  // Manual check-in override by supervisor
+  app.post("/api/events/:eventId/teams/:teamId/staff/:staffId/manual-checkin", requireSupervisorAccess, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      const teamId = parseInt(req.params.teamId);
+      const staffId = parseInt(req.params.staffId);
+      const supervisorId = req.supervisorContext.supervisorId;
+      
+      // Ensure supervisor is requesting data for their assigned team
+      if (eventId !== req.supervisorContext.eventId || teamId !== req.supervisorContext.teamId) {
+        return res.status(403).json({ message: "Not authorized to perform actions for this team" });
+      }
+      
+      // Get the staff assignment
+      const assignments = await storage.listStaffAssignments(eventId, staffId);
+      const assignment = assignments.find(a => a.teamId === teamId);
+      
+      if (!assignment) {
+        return res.status(404).json({ message: "Staff assignment not found" });
+      }
+      
+      // Simulate a check-in with manual override
+      const checkInData: CheckIn = {
+        staffId,
+        eventId,
+        image: req.body.image || "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNDAiIGZpbGw9IiNlMmU4ZjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM4IiByPSIxMiIgZmlsbD0iIzhiYTJiZiIvPjxwYXRoIGQ9Ik0yNSw4NSBDMjUsNjUgNzUsNjUgNzUsODUiIGZpbGw9IiM4YmEyYmYiLz48L3N2Zz4=",
+        location: req.body.location || { latitude: 0, longitude: 0 },
+        manualOverride: true,
+        overrideReason: req.body.reason || "Approved by supervisor"
+      };
+      
+      const updatedAssignment = await storage.checkInStaff(checkInData);
+      
+      if (!updatedAssignment) {
+        return res.status(500).json({ message: "Failed to perform manual check-in" });
+      }
+      
+      // Additional step to approve the override with the supervisor ID
+      const approvedAssignment = await storage.approveOverride(updatedAssignment.id, supervisorId);
+      
+      res.json({
+        success: true,
+        assignment: approvedAssignment
+      });
+    } catch (error) {
+      console.error("Error performing manual check-in:", error);
+      res.status(500).json({ message: "Failed to perform manual check-in" });
+    }
+  });
+
+  // List supervisor access tokens for an event
+  app.get("/api/events/:eventId/supervisor-access", requireOrganizer, async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.eventId);
+      const tokens = await storage.listSupervisorAccessTokens(eventId);
+      
+      // Filter out sensitive information
+      const safeTokens = tokens.map(token => {
+        const { accessToken, ...safeToken } = token;
+        return {
+          ...safeToken,
+          accessToken: `${accessToken.substring(0, 8)}...${accessToken.substring(accessToken.length - 8)}`
+        };
+      });
+      
+      res.json(safeTokens);
+    } catch (error) {
+      console.error("Error fetching supervisor access tokens:", error);
+      res.status(500).json({ message: "Failed to fetch supervisor access tokens" });
+    }
+  });
+  
+  // Invalidate supervisor access token
+  app.delete("/api/supervisor-access/:id", requireOrganizer, async (req, res) => {
+    try {
+      const tokenId = parseInt(req.params.id);
+      const success = await storage.invalidateSupervisorAccessToken(tokenId);
+      
+      if (success) {
+        res.status(200).json({ message: "Access token invalidated successfully" });
+      } else {
+        res.status(404).json({ message: "Access token not found" });
+      }
+    } catch (error) {
+      console.error("Error invalidating supervisor access token:", error);
+      res.status(500).json({ message: "Failed to invalidate access token" });
     }
   });
 

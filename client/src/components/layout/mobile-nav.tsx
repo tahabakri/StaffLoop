@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Users, Calendar, FileText, Settings } from "lucide-react";
+import { Home, Users, Calendar, FileText, Settings, BarChart, ClipboardList } from "lucide-react";
 
 interface MobileNavProps {
   className?: string;
@@ -8,7 +8,10 @@ interface MobileNavProps {
 export function MobileNav({ className }: MobileNavProps) {
   const [location, setLocation] = useLocation();
 
-  const isActive = (path: string) => {
+  const isActive = (path: string, matchSubRoutes = false) => {
+    if (matchSubRoutes) {
+      return location.startsWith(path);
+    }
     return location === path;
   };
 
@@ -29,10 +32,16 @@ export function MobileNav({ className }: MobileNavProps) {
       icon: <Calendar className="h-6 w-6" />,
       label: "Events",
       path: "/events",
-      active: isActive("/events"),
+      active: isActive("/events", true),
     },
     {
-      icon: <FileText className="h-6 w-6" />,
+      icon: <ClipboardList className="h-6 w-6" />,
+      label: "Templates",
+      path: "/messages",
+      active: isActive("/messages"),
+    },
+    {
+      icon: <BarChart className="h-6 w-6" />,
       label: "Reports",
       path: "/reports",
       active: isActive("/reports"),

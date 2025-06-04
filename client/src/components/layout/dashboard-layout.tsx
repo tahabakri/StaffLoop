@@ -10,7 +10,7 @@ import {
   CreditCard,
   HelpCircle,
   Bell,
-  MessageSquare
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,13 +22,14 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   path: string;
+  matchSubRoutes?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Users, label: "Staff", path: "/staff" },
-  { icon: Calendar, label: "Events", path: "/events" },
-  { icon: MessageSquare, label: "Messages", path: "/messages" },
+  { icon: Calendar, label: "Events", path: "/events", matchSubRoutes: true },
+  { icon: ClipboardList, label: "Templates", path: "/messages" },
   { icon: BarChart, label: "Reports", path: "/reports" },
 ];
 
@@ -46,6 +47,14 @@ export function DashboardLayout() {
   const [showChecklist, setShowChecklist] = useState(
     location.pathname === "/dashboard"
   );
+
+  // Helper function to check if a path is active, considering sub-routes
+  const isPathActive = (path: string, matchSubRoutes?: boolean) => {
+    if (matchSubRoutes) {
+      return location.pathname.startsWith(path);
+    }
+    return location.pathname === path;
+  };
 
   useEffect(() => {
     // Simulate loading state
@@ -91,7 +100,7 @@ export function DashboardLayout() {
                   <SidebarNavItem
                     key={item.path}
                     {...item}
-                    isActive={location.pathname === item.path}
+                    isActive={isPathActive(item.path, item.matchSubRoutes)}
                     onClick={() => navigate(item.path)}
                   />
                 ))}
@@ -104,7 +113,7 @@ export function DashboardLayout() {
                   <SidebarNavItem
                     key={item.path}
                     {...item}
-                    isActive={location.pathname === item.path}
+                    isActive={isPathActive(item.path, item.matchSubRoutes)}
                     onClick={() => navigate(item.path)}
                   />
                 ))}
@@ -131,7 +140,7 @@ export function DashboardLayout() {
   );
 }
 
-function SidebarNavItem({ icon: Icon, label, path, isActive, onClick }: NavItem & { isActive: boolean; onClick: () => void }) {
+function SidebarNavItem({ icon: Icon, label, path, isActive, onClick, matchSubRoutes }: NavItem & { isActive: boolean; onClick: () => void }) {
   return (
     <li>
       <button

@@ -1,7 +1,7 @@
 import { 
   User, Event, StaffAssignment, OnboardingSurvey, Payment, SupportTicket, 
   InsertUser, InsertEvent, InsertStaffAssignment, InsertOnboardingSurvey, InsertPayment, InsertSupportTicket,
-  CheckIn, CheckOut
+  CheckIn, CheckOut, SupervisorAccessToken, CreateSupervisorAccessToken
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import session from "express-session";
@@ -58,6 +58,12 @@ export interface IStorage {
   checkOutStaff(data: CheckOut): Promise<StaffAssignment | undefined>;
   approveOverride(assignmentId: number, approverId: number): Promise<StaffAssignment | undefined>;
   
+  // Supervisor access methods
+  createSupervisorAccessToken(data: CreateSupervisorAccessToken): Promise<SupervisorAccessToken>;
+  getSupervisorAccessToken(token: string): Promise<SupervisorAccessToken | undefined>;
+  listSupervisorAccessTokens(eventId?: number, teamId?: number): Promise<SupervisorAccessToken[]>;
+  invalidateSupervisorAccessToken(id: number): Promise<boolean>;
+  
   // Payment methods
   getPayment(id: number): Promise<Payment | undefined>;
   getPaymentByEventId(eventId: number): Promise<Payment | undefined>;
@@ -84,6 +90,7 @@ export class MemStorage implements IStorage {
   private onboardingSurveys: Map<number, OnboardingSurvey>;
   private payments: Map<number, Payment>;
   private supportTickets: Map<number, SupportTicket>;
+  private supervisorAccessTokens: Map<number, SupervisorAccessToken>;
   sessionStore: any;
   private userIdCounter: number;
   private eventIdCounter: number;
@@ -91,6 +98,7 @@ export class MemStorage implements IStorage {
   private surveyIdCounter: number;
   private paymentIdCounter: number;
   private ticketIdCounter: number;
+  private tokenIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -99,6 +107,7 @@ export class MemStorage implements IStorage {
     this.onboardingSurveys = new Map();
     this.payments = new Map();
     this.supportTickets = new Map();
+    this.supervisorAccessTokens = new Map();
     
     this.userIdCounter = 1;
     this.eventIdCounter = 1;
@@ -106,6 +115,7 @@ export class MemStorage implements IStorage {
     this.surveyIdCounter = 1;
     this.paymentIdCounter = 1;
     this.ticketIdCounter = 1;
+    this.tokenIdCounter = 1;
     
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
@@ -124,7 +134,7 @@ export class MemStorage implements IStorage {
       phone: "+971501234567",
       name: "Test Organizer",
       password: hashedOrganizerPassword,
-      role: "organizer",
+      role: "organizer" as "organizer" | "staff" | "admin",
       profileImage: "",
       confirmPassword: "password123"
     });
@@ -408,27 +418,25 @@ export class MemStorage implements IStorage {
   }
 
   async createEvent(eventData: InsertEvent, organizerId: number): Promise<Event> {
-    const id = this.eventIdCounter++;
-    const createdAt = new Date();
-    
-    const event: Event = {
-      id,
+    const newEvent: Event = {
+      id: this.eventIdCounter++,
       name: eventData.name,
       location: eventData.location,
       date: eventData.date,
       startTime: eventData.startTime,
       endTime: eventData.endTime,
       description: eventData.description || "",
-      organizerId,
+      organizerId: organizerId,
       isActive: false,
       staffCount: 0,
       duration: eventData.duration || 1,
       mapLocation: eventData.mapLocation || null,
-      createdAt,
+      createdAt: new Date(),
+      hasTeams: false // Default to false for new events
     };
-
-    this.events.set(id, event);
-    return event;
+    
+    this.events.set(newEvent.id, newEvent);
+    return newEvent;
   }
   
   async listActiveEvents(organizerId?: number): Promise<Event[]> {
@@ -762,6 +770,56 @@ export class MemStorage implements IStorage {
     }
     
     return tickets;
+  }
+
+  // Supervisor access token methods
+  async createSupervisorAccessToken(data: CreateSupervisorAccessToken): Promise<SupervisorAccessToken> {
+    const token = nanoid(32); // Generate a secure random token
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Token expires in 7 days
+    
+    const newToken: SupervisorAccessToken = {
+      id: this.tokenIdCounter++,
+      eventId: data.eventId,
+      teamId: data.teamId,
+      supervisorStaffId: data.supervisorStaffId,
+      accessToken: token,
+      expiresAt: expiresAt,
+      isActive: true,
+      createdAt: new Date()
+    };
+    
+    this.supervisorAccessTokens.set(newToken.id, newToken);
+    return newToken;
+  }
+  
+  async getSupervisorAccessToken(token: string): Promise<SupervisorAccessToken | undefined> {
+    const tokens = Array.from(this.supervisorAccessTokens.values());
+    return tokens.find(accessToken => accessToken.accessToken === token);
+  }
+  
+  async listSupervisorAccessTokens(eventId?: number, teamId?: number): Promise<SupervisorAccessToken[]> {
+    let tokens = Array.from(this.supervisorAccessTokens.values());
+    
+    if (eventId !== undefined) {
+      tokens = tokens.filter(token => token.eventId === eventId);
+    }
+    
+    if (teamId !== undefined) {
+      tokens = tokens.filter(token => token.teamId === teamId);
+    }
+    
+    return tokens;
+  }
+  
+  async invalidateSupervisorAccessToken(id: number): Promise<boolean> {
+    const token = this.supervisorAccessTokens.get(id);
+    if (token) {
+      token.isActive = false;
+      this.supervisorAccessTokens.set(id, token);
+      return true;
+    }
+    return false;
   }
 }
 

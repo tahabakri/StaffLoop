@@ -51,7 +51,7 @@ export default function AutomatedMessagesPage() {
   return (
     <div className="flex flex-col w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Manage Notification Templates</h1>
+        <h1 className="text-2xl font-bold">Edit Message Templates</h1>
         <div className="flex items-center space-x-2">
           <Switch 
             id="notifications-enabled" 
