@@ -50,8 +50,8 @@ export default function EventManageDetailPage() {
         return "default"; 
       case 'upcoming':
         return "secondary"; 
-      case 'completed':
-        return "outline"; 
+      case 'ended':
+        return "destructive"; 
       default:
         return "outline";
     }
@@ -66,8 +66,8 @@ export default function EventManageDetailPage() {
         return "bg-green-500 hover:bg-green-600"; 
       case 'upcoming':
         return "bg-blue-500 hover:bg-blue-600"; 
-      case 'completed':
-        return "bg-gray-500 hover:bg-gray-600"; 
+      case 'ended':
+        return "bg-red-500 hover:bg-red-600"; 
       default:
         return "";
     }
@@ -185,7 +185,7 @@ export default function EventManageDetailPage() {
           <Card className="p-6">
             <div className="flex justify-between items-start">
               <h2 className="text-xl font-semibold mb-4">Attendance Tracking</h2>
-              {event.status === 'completed' && (
+              {event.status === 'ended' && (
                 <Button variant="outline" className="flex items-center gap-2">
                   <ClipboardList className="h-4 w-4" />
                   Download Report
@@ -221,8 +221,8 @@ export default function EventManageDetailPage() {
                 </div>
               )}
               
-              {event.status === 'completed' && (
-                <div className="p-4 bg-gray-50 rounded-md text-gray-700">
+              {event.status === 'ended' && (
+                <div className="p-4 bg-red-50 rounded-md text-red-700">
                   <p>View final attendance summary here.</p>
                   <div className="mt-4 grid grid-cols-3 gap-4">
                     <div className="p-4 bg-white rounded-md border">

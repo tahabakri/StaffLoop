@@ -1,4 +1,22 @@
 import React from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
+import {
+  LifeBuoy,
+  HelpCircle,
+  Mail,
+  MessageCircle,
+} from "lucide-react";
 
 const faqs = [
   {
@@ -22,28 +40,64 @@ const faqs = [
 export default function HelpPage() {
   return (
     <div className="max-w-3xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Help & Support</h1>
+      <h1 className="text-2xl font-bold mb-6 flex items-center">
+        <LifeBuoy className="h-6 w-6 mr-2" />
+        Help & Support
+      </h1>
+      
       <section className="mb-10">
-        <h2 className="text-lg font-semibold mb-4">Frequently Asked Questions</h2>
-        <div className="space-y-4">
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <HelpCircle className="h-5 w-5 mr-2" />
+          Frequently Asked Questions
+        </h2>
+        
+        <Accordion type="single" collapsible className="w-full">
           {faqs.map((faq, i) => (
-            <div key={i} className="border rounded-lg p-4 bg-gray-50">
-              <div className="font-medium text-gray-800 mb-2">{faq.question}</div>
-              <div className="text-gray-600">{faq.answer}</div>
-            </div>
+            <AccordionItem key={i} value={`item-${i}`} className="border-b">
+              <AccordionTrigger className="font-medium text-gray-800 py-4">
+                {faq.question}
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-600 pt-2 pb-4">
+                {faq.answer}
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </section>
+      
       <section>
-        <h2 className="text-lg font-semibold mb-4">Contact Support</h2>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="mb-2">
-            <span className="font-medium">Email Support:</span> <a href="mailto:support@staffloop.app" className="text-primary underline">support@staffloop.app</a>
-          </div>
-          <div>
-            <span className="font-medium">WhatsApp Support:</span> <a href="https://wa.me/1234567890" className="text-primary underline">+1 234 567 890</a>
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center">
+              <Mail className="h-5 w-5 mr-2" />
+              Contact Support
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex items-center">
+              <Mail className="h-5 w-5 mr-3 text-gray-600" />
+              <span className="font-medium mr-2">Email Support:</span>
+              <a 
+                href="mailto:support@staffloop.app" 
+                className="text-primary hover:underline"
+              >
+                support@staffloop.app
+              </a>
+            </div>
+            <div className="flex items-center">
+              <MessageCircle className="h-5 w-5 mr-3 text-gray-600" />
+              <span className="font-medium mr-2">WhatsApp Support:</span>
+              <a 
+                href="https://wa.me/1234567890" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-primary hover:underline"
+              >
+                +1 234 567 890
+              </a>
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </div>
   );

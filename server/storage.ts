@@ -434,7 +434,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       hasTeams: false // Default to false for new events
     };
-    
+
     this.events.set(newEvent.id, newEvent);
     return newEvent;
   }

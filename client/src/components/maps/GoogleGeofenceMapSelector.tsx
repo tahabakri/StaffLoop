@@ -48,11 +48,11 @@ const circleOptions = {
 };
 
 // Default API key - in production, this should come from environment variables
-const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const DEFAULT_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
 // Show warning in development if API key is missing
-if (process.env.NODE_ENV === 'development' && !DEFAULT_API_KEY) {
-  console.warn('Google Maps API key is missing. Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your .env.local file.');
+if (import.meta.env.DEV && !DEFAULT_API_KEY) {
+  console.warn('Google Maps API key is missing. Set VITE_GOOGLE_MAPS_API_KEY in your .env.local file.');
 }
 
 interface GoogleGeofenceMapSelectorProps {

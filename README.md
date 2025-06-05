@@ -6,7 +6,7 @@ This project uses environment variables to store sensitive information like API 
 2. Add the following variables:
 
 ```
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 **Important:** Never commit your `.env.local` file to version control. It's already added to `.gitignore` to prevent accidental commits.

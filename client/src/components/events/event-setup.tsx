@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,76 +6,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { ChevronLeft, ChevronRight, Plus, UserPlus, Copy, Share2, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus, Copy, Share2, Check, Trash2, Save } from "lucide-react";
 import { format, addDays, isBefore, isAfter, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Combobox } from "@/components/ui/combobox";
 import { useQueryClient } from '@tanstack/react-query';
 import { Switch } from "@/components/ui/switch";
 import { GoogleGeofenceMapSelector } from "@/components/maps/GoogleGeofenceMapSelector";
-
-interface Role {
-  id: string;
-  name: string;
-  staffCount: number; // Used when event has no shifts
-  shiftStaffCounts?: { [shiftId: string]: number }; // Maps shift ID to staff count when event has shifts
-  assignedStaff: Staff[];
-  teamId?: string; // Optional team ID for when teams are used
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  contactInfo: string;
-  teamId?: string; // Optional team ID for staff assignment
-  shiftId?: string; // Optional shift ID for when event has shifts
-}
-
-interface Team {
-  id: string;
-  name: string;
-  roles: Role[]; // Roles specific to this team
-}
-
-interface Shift {
-  name: string;
-  startTime: string;
-  endTime: string;
-}
-
-interface EventSchedule {
-  startTime: string;
-  endTime: string;
-  hasShifts: boolean;
-  shifts: Shift[];
-}
-
-interface EventStaffAssignment {
-  // ... existing fields
-  teamId?: string; // Optional team ID (nullable)
-}
-
-interface EventData {
-  name: string;
-  location: string;
-  isMultiDay: boolean;
-  startDate: string;
-  endDate: string;
-  schedule: EventSchedule;
-  description: string;
-  roles: Role[]; // Global roles (used when hasTeams is false)
-  hasTeams: boolean; // Flag to indicate if this event uses team organization
-  teams: Team[]; // Array of teams for this event
-  geofence: {
-    latitude: number;
-    longitude: number;
-    radiusMeters: number;
-  };
-}
+import { useNavigate } from "react-router-dom";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useEventDraft } from "@/hooks/use-event-draft";
+import { useBackendEventDraft } from "@/hooks/use-backend-event-draft";
+import { EventData, Role, Staff, Team, Shift, EventSchedule, initialEventData } from "@/types/events";
 
 interface SupervisorAccessToken {
   id: number;
@@ -95,35 +40,13 @@ const mockStaffList = [
   { id: "3", name: "Bob Lee", role: "Staff", contactInfo: "bob@example.com" },
 ];
 
-const initialEventData: EventData = {
-  name: "",
-  location: "",
-  isMultiDay: false,
-  startDate: format(new Date(), "yyyy-MM-dd"),
-  endDate: format(new Date(), "yyyy-MM-dd"),
-  schedule: {
-    startTime: "09:00",
-    endTime: "17:00",
-    hasShifts: false,
-    shifts: [],
-  },
-  description: "",
-  roles: [], // Global roles when hasTeams is false
-  hasTeams: false,
-  teams: [], // Teams with their own roles when hasTeams is true
-  geofence: {
-    latitude: 25.2048, // Default to Dubai coordinates
-    longitude: 55.2708,
-    radiusMeters: 100, // Default 100 meters
-  },
-};
-
 interface EventSetupProps {
   eventId?: string;
   isEditMode?: boolean;
 }
 
 export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [eventData, setEventData] = useState<EventData>(initialEventData);
   const [isCreating, setIsCreating] = useState(false);
@@ -139,6 +62,21 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [accessToken, setAccessToken] = useState<SupervisorAccessToken | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  
+  // Use the custom draft hooks
+  const {
+    draftData,
+    hasDraft,
+    showDraftDialog,
+    setShowDraftDialog,
+    debouncedSaveDraft,
+    clearDraft
+  } = useEventDraft<EventData>(initialEventData, isEditMode);
+  
+  // Backend draft hook
+  const { isSaving, saveAsDraft } = useBackendEventDraft();
+
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const steps = [
     { id: 1, title: "Event Type and Dates" },
@@ -147,6 +85,65 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
     { id: 4, title: "Assign Staff" },
     { id: 5, title: "Review and Confirm" },
   ];
+
+  // Resume draft
+  const resumeDraft = useCallback(() => {
+    if (draftData) {
+      setEventData(draftData.eventData);
+      setCurrentStep(draftData.step);
+      setShowDraftDialog(false);
+      
+      toast({
+        title: "Draft Loaded",
+        description: "Your saved draft has been loaded successfully.",
+      });
+    }
+  }, [draftData, toast, setShowDraftDialog]);
+
+  // Discard draft
+  const discardDraft = useCallback(() => {
+    clearDraft();
+    setShowDraftDialog(false);
+    
+    toast({
+      title: "Draft Discarded",
+      description: "The saved draft has been discarded.",
+    });
+  }, [clearDraft, toast, setShowDraftDialog]);
+
+  // Save draft when eventData changes
+  useEffect(() => {
+    // Don't save draft in edit mode
+    if (isEditMode) return;
+    
+    // Only save if there's actual data (not just the initial state)
+    if (eventData.name || eventData.location !== initialEventData.location) {
+      debouncedSaveDraft(eventData, currentStep);
+    }
+  }, [eventData, currentStep, debouncedSaveDraft, isEditMode]);
+
+  // Handle saving draft to backend
+  const handleSaveAsDraft = async () => {
+    // Validate minimum required fields
+    if (!eventData.name) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide at least an event name before saving as draft.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const result = await saveAsDraft(eventData, eventId);
+    
+    if (result.success) {
+      // Clear localStorage draft since we now have a backend draft
+      clearDraft();
+      
+      // Navigate back to events list
+      navigate('/events');
+    }
+  };
 
   // Fetch event data if in edit mode
   useEffect(() => {
@@ -366,13 +363,13 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
           }
         } else {
           // Validate global roles when teams are disabled
-          if (eventData.roles.length === 0) {
-            toast({
-              title: "No Roles Defined",
-              description: "Please add at least one role.",
-              variant: "destructive",
-            });
-            return false;
+        if (eventData.roles.length === 0) {
+          toast({
+            title: "No Roles Defined",
+            description: "Please add at least one role.",
+            variant: "destructive",
+          });
+          return false;
           }
           
           // Validate each global role
@@ -460,14 +457,14 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
           }
         } else {
           // Validate staff assignments for global roles
-          const hasUnassignedRoles = eventData.roles.some(role => role.assignedStaff.length === 0);
-          if (hasUnassignedRoles) {
-            toast({
-              title: "Unassigned Roles",
-              description: "Please assign staff to all roles.",
-              variant: "destructive",
-            });
-            return false;
+        const hasUnassignedRoles = eventData.roles.some(role => role.assignedStaff.length === 0);
+        if (hasUnassignedRoles) {
+          toast({
+            title: "Unassigned Roles",
+            description: "Please assign staff to all roles.",
+            variant: "destructive",
+          });
+          return false;
           }
         }
         return true;
@@ -508,10 +505,16 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
           title: "Success",
           description: "Event created and added to dropdown!",
         });
+        
+        // Clear draft after successful submission
+        clearDraft();
       }
       
       // Invalidate events query so dropdowns update
       await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+      
+      // Navigate back to events list
+      navigate('/events');
       
       if (!isEditMode) {
         setEventData(initialEventData);
@@ -528,6 +531,25 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  // Cancel event creation and navigate back to events list
+  const handleCancel = () => {
+    // If there's data, confirm before leaving
+    if (eventData.name || eventData.location !== initialEventData.location) {
+      // Show confirmation dialog
+      setShowCancelDialog(true);
+    } else {
+      // No data to lose, just navigate back
+      navigate('/events');
+    }
+  };
+
+  // Confirm cancel and discard draft
+  const confirmCancel = () => {
+    clearDraft();
+    setShowCancelDialog(false);
+    navigate('/events');
   };
 
   // Function to generate access token for supervisor
@@ -935,11 +957,11 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                         {team.roles.map((role, roleIndex) => (
                           <div key={role.id} className="flex flex-col gap-2 pl-4 border-l-2 border-gray-200">
                             <div className="flex justify-between items-center">
-                              <div className="flex-1">
-                                <Label>Role Name</Label>
-                                <Input
-                                  value={role.name}
-                                  onChange={(e) => {
+                  <div className="flex-1">
+                    <Label>Role Name</Label>
+                    <Input
+                      value={role.name}
+                      onChange={(e) => {
                                     const newTeams = [...eventData.teams];
                                     const newRoles = [...team.roles];
                                     newRoles[roleIndex] = { ...role, name: e.target.value };
@@ -947,8 +969,8 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                                     setEventData(prev => ({ ...prev, teams: newTeams }));
                                   }}
                                   placeholder="e.g., Team Supervisor, Usher, Greeter"
-                                />
-                              </div>
+                    />
+                  </div>
                               
                               <Button
                                 variant="ghost"
@@ -1012,12 +1034,12 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                             ) : (
                               // Single staff count input for the entire event
                               <div className="ml-4 flex items-center gap-2">
-                                <div className="w-32">
-                                  <Label>Staff Count</Label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={role.staffCount}
+                  <div className="w-32">
+                    <Label>Staff Count</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={role.staffCount}
                                     onChange={(e) => {
                                       const newTeams = [...eventData.teams];
                                       const newRoles = [...team.roles];
@@ -1115,24 +1137,24 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                           <Label>Role Name</Label>
                           <Input
                             value={role.name}
-                            onChange={(e) => {
-                              const newRoles = [...eventData.roles];
+                      onChange={(e) => {
+                        const newRoles = [...eventData.roles];
                               newRoles[index] = { ...role, name: e.target.value };
-                              setEventData(prev => ({ ...prev, roles: newRoles }));
-                            }}
+                        setEventData(prev => ({ ...prev, roles: newRoles }));
+                      }}
                             placeholder="Enter role name"
-                          />
-                        </div>
+                    />
+                  </div>
                         
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            const newRoles = eventData.roles.filter((_, i) => i !== index);
-                            setEventData(prev => ({ ...prev, roles: newRoles }));
-                          }}
-                        >
-                          Remove
-                        </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const newRoles = eventData.roles.filter((_, i) => i !== index);
+                      setEventData(prev => ({ ...prev, roles: newRoles }));
+                    }}
+                  >
+                    Remove
+                  </Button>
                       </div>
                       
                       {/* Staff Count - Either global or per-shift based on event configuration */}
@@ -1198,11 +1220,11 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                           <span className="text-xs text-gray-500">staff needed overall</span>
                         </div>
                       )}
-                    </div>
-                  ))}
+                </div>
+              ))}
 
-                  <Button
-                    variant="outline"
+              <Button
+                variant="outline"
                     onClick={() => {
                       const newRole = {
                         id: Math.random().toString(), 
@@ -1219,14 +1241,14 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                       };
                       
                       setEventData(prev => ({
-                        ...prev,
+                  ...prev,
                         roles: [...prev.roles, newRole]
                       }));
                     }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Role
-                  </Button>
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Role
+              </Button>
                 </div>
               )}
             </div>
@@ -1407,7 +1429,7 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                                       const newTeams = [...eventData.teams];
                                       const newRoles = [...team.roles];
                                       newRoles[roleIndex].assignedStaff = role.assignedStaff.filter(
-                                        s => !(s.id === staff.id && s.shiftId === shiftId)
+                                        s => s.id !== staff.id
                                       );
                                       newTeams[teamIndex] = { ...team, roles: newRoles };
                                       setEventData(prev => ({ ...prev, teams: newTeams }));
@@ -1490,7 +1512,7 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
               <div className="space-y-6">
                 {eventData.roles.map((role, index) => (
                   <div key={index} className="space-y-4">
-                    <h3 className="font-medium">{role.name}</h3>
+                <h3 className="font-medium">{role.name}</h3>
                     
                     {eventData.schedule.hasShifts ? (
                       // Shift-specific staff assignments for global roles
@@ -1592,96 +1614,96 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                       </div>
                     ) : (
                       // Non-shift staff assignments for global roles (original UI)
-                      <div className="space-y-2">
-                        {role.assignedStaff.map((staff, staffIndex) => (
-                          <div key={staffIndex} className="flex items-center gap-4">
-                            <div className="flex-1">
-                              <Input value={staff.name} disabled />
-                            </div>
-                            <Button
-                              variant="ghost"
-                              onClick={() => {
-                                const newRoles = [...eventData.roles];
+                <div className="space-y-2">
+                  {role.assignedStaff.map((staff, staffIndex) => (
+                    <div key={staffIndex} className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Input value={staff.name} disabled />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          const newRoles = [...eventData.roles];
                                 newRoles[index].assignedStaff = role.assignedStaff.filter((_, i) => i !== staffIndex);
-                                setEventData(prev => ({ ...prev, roles: newRoles }));
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        ))}
-                        {role.assignedStaff.length < role.staffCount && (
-                          <div className="flex flex-col gap-2">
-                            <Label>Assign Existing Staff</Label>
-                            <Combobox
-                              value={staffSearch}
-                              onValueChange={setStaffSearch}
-                              options={
-                                staffSearch
-                                  ? mockStaffList.filter(s => s.name.toLowerCase().includes(staffSearch.toLowerCase()))
-                                  : mockStaffList
-                              }
-                              getOptionLabel={s => `${s.name} (${s.role})`}
-                              getOptionValue={s => s.id}
-                              onSelect={staffId => {
-                                const staff = mockStaffList.find(s => s.id === staffId);
-                                if (staff) {
-                                  const newRoles = [...eventData.roles];
+                          setEventData(prev => ({ ...prev, roles: newRoles }));
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  {role.assignedStaff.length < role.staffCount && (
+                    <div className="flex flex-col gap-2">
+                      <Label>Assign Existing Staff</Label>
+                      <Combobox
+                        value={staffSearch}
+                        onValueChange={setStaffSearch}
+                        options={
+                          staffSearch
+                            ? mockStaffList.filter(s => s.name.toLowerCase().includes(staffSearch.toLowerCase()))
+                            : mockStaffList
+                        }
+                        getOptionLabel={s => `${s.name} (${s.role})`}
+                        getOptionValue={s => s.id}
+                        onSelect={staffId => {
+                          const staff = mockStaffList.find(s => s.id === staffId);
+                          if (staff) {
+                            const newRoles = [...eventData.roles];
                                   newRoles[index].assignedStaff.push({
                                     ...staff,
                                     role: role.name
                                   });
-                                  setEventData(prev => ({ ...prev, roles: newRoles }));
-                                  setStaffSearch("");
-                                  toast({ title: "Staff assigned successfully" });
-                                }
-                              }}
-                              placeholder="Search staff by name..."
-                              className="w-full border border-gray-300 rounded-md"
-                              loading={isStaffLoading}
-                              renderNoOptions={() => (
-                                <Button
-                                  variant="outline"
-                                  className="w-full mt-2"
-                                  onClick={() => setShowNewStaffDialog(true)}
-                                >
-                                  <UserPlus className="h-4 w-4 mr-2" />
-                                  Add New Staff
-                                </Button>
-                              )}
-                            />
-                          </div>
+                            setEventData(prev => ({ ...prev, roles: newRoles }));
+                            setStaffSearch("");
+                            toast({ title: "Staff assigned successfully" });
+                          }
+                        }}
+                        placeholder="Search staff by name..."
+                        className="w-full border border-gray-300 rounded-md"
+                        loading={isStaffLoading}
+                        renderNoOptions={() => (
+                          <Button
+                            variant="outline"
+                            className="w-full mt-2"
+                            onClick={() => setShowNewStaffDialog(true)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Add New Staff
+                          </Button>
                         )}
+                      />
+                    </div>
+                  )}
                       </div>
                     )}
                   </div>
                 ))}
                 
-                <Dialog open={showNewStaffDialog} onOpenChange={setShowNewStaffDialog}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add New Staff</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label>Staff Name</Label>
-                        <Input placeholder="Enter staff name" />
-                      </div>
-                      <div>
-                        <Label>Contact Info</Label>
-                        <Input placeholder="Enter email or phone" />
-                      </div>
-                      <Button
-                        onClick={() => {
+                  <Dialog open={showNewStaffDialog} onOpenChange={setShowNewStaffDialog}>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Add New Staff</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Staff Name</Label>
+                          <Input placeholder="Enter staff name" />
+                        </div>
+                        <div>
+                          <Label>Contact Info</Label>
+                          <Input placeholder="Enter email or phone" />
+                        </div>
+                        <Button
+                          onClick={() => {
                           // Implementation would depend on which role we're adding staff to
-                          setShowNewStaffDialog(false);
-                          setStaffSearch("");
+                            setShowNewStaffDialog(false);
+                            setStaffSearch("");
                           toast({ title: "Staff added successfully" });
-                        }}
-                      >
-                        Add Staff
-                      </Button>
-                    </div>
+                          }}
+                        >
+                          Add Staff
+                        </Button>
+                      </div>
                     <DialogFooter>
                       <Button 
                         variant="secondary" 
@@ -1690,9 +1712,9 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                         Close
                       </Button>
                     </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
             )}
             
             {/* Supervisor Access Token Dialog */}
@@ -1709,7 +1731,7 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                     <div className="flex flex-col items-center justify-center py-8">
                       <Spinner className="h-8 w-8 mb-4" />
                       <p>Generating access token...</p>
-                    </div>
+              </div>
                   ) : accessToken ? (
                     <div className="space-y-4">
                       <div>
@@ -2092,8 +2114,20 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
   return (
     <div className="max-w-3xl mx-auto">
       <Card>
-        <CardHeader>
-          <CardTitle>Create New Event</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>
+            {isEditMode ? "Edit Event" : "Create New Event"}
+          </CardTitle>
+          {!isEditMode && hasDraft && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1 text-gray-500 hover:text-red-500"
+              onClick={() => setShowDraftDialog(true)}
+            >
+              <span className="text-xs">Saved Draft</span>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="space-y-8">
@@ -2137,14 +2171,35 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
 
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-6">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 1}
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
+              <div className="flex gap-2">
+                {currentStep === 1 ? (
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                  >
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={handleBack}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                )}
+                
+                {/* Save as Draft button - always visible */}
+                <Button
+                  variant="secondary"
+                  onClick={handleSaveAsDraft}
+                  disabled={isSaving}
+                  className="gap-2"
+                >
+                  {isSaving ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                  Save as Draft
+                </Button>
+              </div>
 
               {currentStep === steps.length ? (
                 <Button
@@ -2153,9 +2208,7 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
                 >
                   {isCreating ? (
                     <Spinner className="mr-2 h-4 w-4" />
-                  ) : (
-                    finalButtonText
-                  )}
+                  ) : isEditMode ? "Update Event" : "Create Event"}
                 </Button>
               ) : (
                 <Button onClick={handleNext}>
@@ -2167,6 +2220,66 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Draft Dialog */}
+      <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resume Draft?</DialogTitle>
+            <DialogDescription>
+              You have an unfinished event draft. Would you like to resume editing it or start a new event?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {draftData && (
+              <div className="border rounded-md p-3 bg-gray-50">
+                <p className="font-medium">{draftData.eventData.name || "Unnamed Event"}</p>
+                <p className="text-sm text-gray-600">{draftData.eventData.location || "No location set"}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Last edited: {new Date(draftData.timestamp).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="sm:justify-start gap-2">
+            <Button 
+              variant="default" 
+              onClick={resumeDraft}
+            >
+              Resume Draft
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={discardDraft}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Discard Draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. If you leave now, your draft will be saved automatically. You can resume editing later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmCancel}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

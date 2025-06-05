@@ -22,7 +22,7 @@ interface EmptyState {
   };
 }
 
-export function RouteContent({ showChecklist, onDismissChecklist }: RouteContentProps) {
+export function RouteContent({ showChecklist: showWelcomeModal, onDismissChecklist: onDismissWelcomeModal }: RouteContentProps) {
   const [location] = useLocation();
   const [hoveredTip, setHoveredTip] = useState<number | null>(null);
 

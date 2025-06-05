@@ -16,7 +16,8 @@ import {
   Pencil, 
   Trash2, 
   Eye,
-  CalendarRange
+  CalendarRange,
+  FileEdit
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
@@ -32,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useBackendEventDraft } from "@/hooks/use-backend-event-draft";
 
 // Mock data for testing status badges
 const MOCK_EVENTS: Event[] = [
@@ -76,9 +78,18 @@ const MOCK_EVENTS: Event[] = [
     name: "Winter Market", 
     date: "2024-12-20", 
     location: "Madinat Jumeirah", 
-    status: "completed",
+    status: "ended",
     checkedInStaff: 75,
     totalStaff: 80
+  },
+  { 
+    id: 6, 
+    name: "Corporate Event Draft", 
+    date: "2025-08-10", 
+    location: "Dubai Marina", 
+    status: "draft",
+    checkedInStaff: 0,
+    totalStaff: 0
   },
 ];
 
@@ -88,17 +99,26 @@ export default function EventListPage() {
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const { deleteDraft } = useBackendEventDraft();
   
-  // Fetch events
-  const { data: events, isLoading } = useQuery<Event[]>({
-    queryKey: ["/api/events"],
-    // For development/testing, return mock data until the API is fully implemented
-    placeholderData: MOCK_EVENTS,
-  });
+  // Fetch events - for now, use mock data directly
+  const [events, setEvents] = useState<Event[]>(MOCK_EVENTS);
+  const isLoading = false;
+
+  // Debug: Log events
+  console.log("Using events:", events);
 
   // Delete event mutation
   const deleteEventMutation = useMutation({
     mutationFn: async (eventId: number) => {
+      // Check if it's a draft event
+      const eventToDelete = events?.find(e => e.id === eventId);
+      if (eventToDelete?.status === 'draft') {
+        // Use the deleteDraft function for drafts
+        return await deleteDraft(eventId);
+      }
+      
+      // For regular events, use the normal delete API
       // In a real app, this would be an API call
       // return await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
       
@@ -107,13 +127,13 @@ export default function EventListPage() {
       return { success: true };
     },
     onSuccess: () => {
-      // Invalidate and refetch events query
-      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-      
+      // Update local state
       if (eventToDelete) {
+        setEvents(events.filter(e => e.id !== eventToDelete.id));
+        
         toast({
-          title: "Event deleted",
-          description: `Event "${eventToDelete.name}" has been deleted successfully.`,
+          title: eventToDelete.status === 'draft' ? "Draft deleted" : "Event deleted",
+          description: `${eventToDelete.status === 'draft' ? "Draft" : "Event"} "${eventToDelete.name}" has been deleted successfully.`,
         });
       }
       
@@ -157,6 +177,8 @@ export default function EventListPage() {
 
   // Format status for display (capitalize first letter, etc.)
   const getStatusDisplayName = (status: string): string => {
+    if (!status) return "Unknown";
+    
     // Capitalize first letter
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
@@ -166,12 +188,16 @@ export default function EventListPage() {
     if (!status) return "outline";
     
     switch (status.toLowerCase()) {
+      case 'draft':
+        return "outline";
       case 'ongoing':
         return "default"; 
       case 'upcoming':
         return "secondary"; 
-      case 'completed':
-        return "outline"; 
+      case 'ended':
+        return "destructive"; 
+      case 'unknown':
+        return "outline";
       default:
         return "outline";
     }
@@ -182,15 +208,24 @@ export default function EventListPage() {
     if (!status) return "";
     
     switch (status.toLowerCase()) {
+      case 'draft':
+        return "border-yellow-500 text-yellow-700 bg-yellow-50"; 
       case 'ongoing':
-        return "bg-green-500 hover:bg-green-600"; 
+        return "bg-green-500 hover:bg-green-600 text-white"; 
       case 'upcoming':
-        return "bg-blue-500 hover:bg-blue-600"; 
-      case 'completed':
-        return "bg-gray-500 hover:bg-gray-600"; 
+        return "bg-blue-500 hover:bg-blue-600 text-white"; 
+      case 'ended':
+        return "bg-red-500 hover:bg-red-600 text-white"; 
+      case 'unknown':
+        return "border-gray-300 text-gray-700 bg-gray-50";
       default:
-        return "";
+        return "border-gray-300 text-gray-700 bg-gray-50";
     }
+  };
+
+  // Check if an event is a draft
+  const isDraft = (event: Event): boolean => {
+    return event.status?.toLowerCase() === 'draft';
   };
 
   return (
@@ -227,52 +262,79 @@ export default function EventListPage() {
                 </TableHeader>
                 <TableBody>
                   {events.map((event) => (
-                    <TableRow key={event.id}>
+                    <TableRow key={event.id} className={isDraft(event) ? "bg-yellow-50/30" : ""}>
                       <TableCell className="font-medium">{event.name}</TableCell>
                       <TableCell>{formatDate(event.date)}</TableCell>
                       <TableCell>{event.location}</TableCell>
                       <TableCell>
                         <Badge 
-                          variant={getBadgeVariant(event.status || "")}
-                          className={getBadgeStyles(event.status || "")}
+                          variant={getBadgeVariant(event.status)}
+                          className={getBadgeStyles(event.status)}
                         >
-                          {event.status ? getStatusDisplayName(event.status) : "Unknown"}
+                          {getStatusDisplayName(event.status || "")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleViewEvent(event.id)}
-                            title="View Event Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleEditEvent(event.id)}
-                            title="Edit Event"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleDeleteClick(event)}
-                            title="Delete Event"
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {isDraft(event) ? (
+                            // Actions for draft events
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleEditEvent(event.id)}
+                                title="Resume Draft"
+                                className="text-yellow-600 hover:text-yellow-800"
+                              >
+                                <FileEdit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDeleteClick(event)}
+                                title="Delete Draft"
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            // Actions for regular events
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleViewEvent(event.id)}
+                                title="View Event Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleEditEvent(event.id)}
+                                title="Edit Event"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDeleteClick(event)}
+                                title="Delete Event"
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
                 <caption className="mt-4 text-sm text-gray-500 text-right p-4">
-                  List of all your events
+                  List of all your events and drafts
                 </caption>
               </Table>
             </div>
@@ -297,9 +359,11 @@ export default function EventListPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Event?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {eventToDelete?.status === 'draft' ? "Delete Draft?" : "Delete Event?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the event "{eventToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete {eventToDelete?.status === 'draft' ? "the draft" : "the event"} "{eventToDelete?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

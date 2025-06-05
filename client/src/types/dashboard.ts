@@ -3,7 +3,7 @@ export interface Event {
   name: string;
   date: string;
   location: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
+  status: 'draft' | 'upcoming' | 'ongoing' | 'ended';
   checkedInStaff: number;
   totalStaff: number;
 }
@@ -50,7 +50,7 @@ export interface EventTimelineItem {
   name: string;
   date: string;
   location: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
+  status: 'upcoming' | 'ongoing' | 'ended';
   checkedInStaff: number;
   totalStaff: number;
 }
@@ -61,5 +61,5 @@ export interface CalendarEvent {
   start: string;
   end: string;
   location: string;
-  status: 'upcoming' | 'ongoing' | 'completed';
+  status: 'upcoming' | 'ongoing' | 'ended';
 } 

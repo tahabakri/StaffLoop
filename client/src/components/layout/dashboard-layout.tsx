@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/navbar";
-import { WelcomeChecklist } from "@/components/onboarding/welcome-checklist";
+import { WelcomeModal } from "@/components/onboarding/welcome-modal";
 
 interface NavItem {
   icon: React.ElementType;
@@ -129,10 +129,10 @@ export function DashboardLayout() {
             </AnimatePresence>
           </div>
         </main>
-        {/* Modal overlay for Welcome Checklist */}
+        {/* Modal overlay for Welcome Modal */}
         {showChecklist && location.pathname === "/dashboard" && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-            <WelcomeChecklist onDismiss={() => setShowChecklist(false)} />
+            <WelcomeModal onDismiss={() => setShowChecklist(false)} />
           </div>
         )}
       </div>

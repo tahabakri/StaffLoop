@@ -1,14 +1,14 @@
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, CalendarPlus, Users, ShieldCheck } from "lucide-react";
 
-interface WelcomeChecklistProps {
+interface WelcomeModalProps {
   onDismiss: () => void;
 }
 
-export function WelcomeChecklist({ onDismiss }: WelcomeChecklistProps) {
+export function WelcomeModal({ onDismiss }: WelcomeModalProps) {
   // No need for navigation now, just dismissal
   const handleContinue = () => {
     // Simply dismiss the modal
