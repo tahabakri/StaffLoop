@@ -13,7 +13,8 @@ import {
   LogOut,
   MessageSquare,
   BarChart,
-  ClipboardList
+  ClipboardList,
+  CalendarDays
 } from "lucide-react";
 
 interface SidebarProps {
@@ -52,6 +53,12 @@ export function Sidebar({ className }: SidebarProps) {
           label: "Events",
           path: "/events",
           active: isActive("/events", true),
+        },
+        {
+          icon: <CalendarDays className="h-5 w-5 mr-3" />,
+          label: "Calendar",
+          path: "/calendar",
+          active: isActive("/calendar"),
         },
         {
           icon: <ClipboardList className="h-5 w-5 mr-3" />,

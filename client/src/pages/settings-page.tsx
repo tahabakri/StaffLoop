@@ -214,9 +214,9 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="grid grid-cols-4 w-full max-w-md">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile">
@@ -269,7 +269,7 @@ export default function SettingsPage() {
                 <div className="grid gap-4 flex-1">
                   <div className="grid gap-2">
                     <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" defaultValue={user?.name} />
+                    <Input id="name" defaultValue={user?.name ?? ''} />
                   </div>
                   
                   <div className="grid gap-2">
@@ -315,13 +315,13 @@ export default function SettingsPage() {
                   
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" defaultValue={user?.email} disabled />
+                    <Input id="email" type="email" defaultValue={user?.email ?? ''} disabled />
                     <p className="text-sm text-muted-foreground">Your email is used for login and cannot be changed.</p>
                   </div>
                   
                   <div className="grid gap-2">
                     <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" defaultValue={user?.phone} />
+                    <Input id="phone" type="tel" defaultValue={user?.phone ?? ''} />
                   </div>
                 </div>
               </div>

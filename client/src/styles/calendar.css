@@ -1,0 +1,104 @@
+/* Custom Calendar Styling */
+
+/* Calendar container */
+.rbc-calendar {
+  font-family: inherit;
+  border-radius: 0.5rem;
+}
+
+/* Header row with day names */
+.rbc-header {
+  padding: 0.75rem 0;
+  font-weight: 500;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Month view */
+.rbc-month-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+}
+
+/* Day cells */
+.rbc-day-bg {
+  transition: background-color 0.2s;
+}
+
+/* Today's cell */
+.rbc-today {
+  background-color: hsl(var(--muted));
+}
+
+/* Off-range days (days from other months) */
+.rbc-off-range {
+  opacity: 0.4;
+}
+
+/* Event styling */
+.rbc-event {
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.rbc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Event when selected */
+.rbc-selected {
+  box-shadow: 0 0 0 2px hsl(var(--ring)) !important;
+}
+
+/* "Show more" button for multiple events */
+.rbc-show-more {
+  font-weight: 500;
+  color: hsl(var(--primary));
+  background-color: transparent;
+  padding: 2px 4px;
+  margin-right: 5px;
+}
+
+/* Week view specific styles */
+.rbc-time-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-content {
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* Time slots */
+.rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Time gutter */
+.rbc-time-gutter {
+  font-weight: 500;
+}
+
+/* Toolbar override (we're using custom toolbar) */
+.rbc-toolbar {
+  display: none;
+}
+
+/* Popup overlay */
+.rbc-overlay {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+}
+
+.rbc-overlay-header {
+  padding: 0.75rem;
+  background-color: hsl(var(--muted));
+  border-bottom: 1px solid hsl(var(--border));
+} 
