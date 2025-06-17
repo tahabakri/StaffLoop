@@ -14,7 +14,9 @@ import {
   MessageSquare,
   BarChart,
   ClipboardList,
-  CalendarDays
+  CalendarDays,
+  Send,
+  MessagesSquare
 } from "lucide-react";
 
 interface SidebarProps {
@@ -61,12 +63,6 @@ export function Sidebar({ className }: SidebarProps) {
           active: isActive("/calendar"),
         },
         {
-          icon: <ClipboardList className="h-5 w-5 mr-3" />,
-          label: "Templates",
-          path: "/messages",
-          active: isActive("/messages"),
-        },
-        {
           icon: <BarChart className="h-5 w-5 mr-3" />,
           label: "Reports",
           path: "/reports",
@@ -82,6 +78,12 @@ export function Sidebar({ className }: SidebarProps) {
           label: "Settings",
           path: "/settings",
           active: isActive("/settings"),
+        },
+        {
+          icon: <MessagesSquare className="h-5 w-5 mr-3" />,
+          label: "Auto-Messages",
+          path: "/messages",
+          active: isActive("/messages"),
         },
         {
           icon: <HelpCircle className="h-5 w-5 mr-3" />,

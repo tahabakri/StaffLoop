@@ -11,7 +11,8 @@ import {
   HelpCircle,
   Bell,
   ClipboardList,
-  CalendarDays
+  CalendarDays,
+  MessagesSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,12 +32,12 @@ const mainNavItems: NavItem[] = [
   { icon: Users, label: "Staff", path: "/staff" },
   { icon: Calendar, label: "Events", path: "/events", matchSubRoutes: true },
   { icon: CalendarDays, label: "Calendar", path: "/calendar" },
-  { icon: ClipboardList, label: "Templates", path: "/messages" },
   { icon: BarChart, label: "Reports", path: "/reports" },
 ];
 
 const settingsNavItems: NavItem[] = [
   { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: MessagesSquare, label: "Auto-Messages", path: "/messages" },
   { icon: CreditCard, label: "Payments", path: "/payments" },
   { icon: HelpCircle, label: "Help", path: "/help" },
 ];

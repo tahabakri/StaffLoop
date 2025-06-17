@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { ChevronLeft, ChevronRight, Plus, UserPlus, Copy, Share2, Check, Trash2, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus, Copy, Share2, Check, Trash2, Save, CalendarPlus } from "lucide-react";
 import { format, addDays, isBefore, isAfter, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Combobox } from "@/components/ui/combobox";
@@ -21,6 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useEventDraft } from "@/hooks/use-event-draft";
 import { useBackendEventDraft } from "@/hooks/use-backend-event-draft";
 import { EventData, Role, Staff, Team, Shift, EventSchedule, initialEventData } from "@/types/events";
+import { downloadEventICS, EventCalendarData } from "@/utils/calendar";
 
 interface SupervisorAccessToken {
   id: number;
@@ -77,6 +78,8 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
   const { isSaving, saveAsDraft } = useBackendEventDraft();
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [createdEvent, setCreatedEvent] = useState<{ id: string; data: EventData } | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const steps = [
     { id: 1, title: "Event Type and Dates" },
@@ -500,26 +503,24 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
           title: "Success",
           description: "Event updated successfully!",
         });
-      } else {
-        toast({
-          title: "Success",
-          description: "Event created and added to dropdown!",
-        });
         
+        // Navigate back to events list
+        navigate('/events');
+      } else {
         // Clear draft after successful submission
         clearDraft();
+        
+        // Generate a mock event ID for the created event
+        const eventId = Math.floor(Math.random() * 10000).toString();
+        
+        // Store the created event data for the success dialog
+        setCreatedEvent({ id: eventId, data: eventData });
+        setShowSuccessDialog(true);
       }
       
       // Invalidate events query so dropdowns update
       await queryClient.invalidateQueries({ queryKey: ["/api/events"] });
       
-      // Navigate back to events list
-      navigate('/events');
-      
-      if (!isEditMode) {
-        setEventData(initialEventData);
-        setCurrentStep(1);
-      }
     } catch (error) {
       toast({
         title: "Error",
@@ -614,6 +615,56 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     }
+  };
+
+  // Handle add to calendar from success dialog
+  const handleAddToCalendarFromSuccess = async () => {
+    if (!createdEvent) return;
+
+    try {
+      // Create start and end datetime from the event data
+      const startDate = new Date(createdEvent.data.startDate);
+      const [startHour, startMinute] = createdEvent.data.schedule.startTime.split(':').map(Number);
+      startDate.setHours(startHour, startMinute, 0, 0);
+
+      const endDate = createdEvent.data.isMultiDay 
+        ? new Date(createdEvent.data.endDate)
+        : new Date(createdEvent.data.startDate);
+      const [endHour, endMinute] = createdEvent.data.schedule.endTime.split(':').map(Number);
+      endDate.setHours(endHour, endMinute, 0, 0);
+
+      const calendarEvent: EventCalendarData = {
+        id: createdEvent.id,
+        name: createdEvent.data.name,
+        description: createdEvent.data.description || `StaffLoop Event - ${createdEvent.data.name}`,
+        location: createdEvent.data.location,
+        startDateTime: startDate.toISOString(),
+        endDateTime: endDate.toISOString(),
+      };
+
+      await downloadEventICS(calendarEvent);
+      
+      toast({
+        title: "Calendar File Downloaded",
+        description: "The event has been added to your calendar file. Open it with your preferred calendar application.",
+      });
+    } catch (error) {
+      console.error('Error adding to calendar:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate calendar file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle success dialog actions
+  const handleSuccessDialogComplete = () => {
+    setShowSuccessDialog(false);
+    setCreatedEvent(null);
+    setEventData(initialEventData);
+    setCurrentStep(1);
+    navigate('/events');
   };
 
   // Function to share token via WhatsApp
@@ -2280,6 +2331,42 @@ export function EventSetup({ eventId, isEditMode = false }: EventSetupProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Event Creation Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-green-600">Event Created Successfully! 🎉</DialogTitle>
+            <DialogDescription className="text-center">
+              Your event "{createdEvent?.data.name}" has been created and is ready to go.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-3 py-4">
+            <Button 
+              onClick={handleAddToCalendarFromSuccess}
+              className="flex items-center gap-2"
+              variant="outline"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Add to Calendar
+            </Button>
+            
+            <Button 
+              onClick={handleSuccessDialogComplete}
+              className="flex items-center gap-2"
+            >
+              Continue to Events
+            </Button>
+          </div>
+          
+          <DialogFooter className="sm:justify-center">
+            <p className="text-xs text-gray-500 text-center">
+              You can always add this event to your calendar later from the event details page.
+            </p>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

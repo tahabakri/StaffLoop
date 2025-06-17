@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Users, Calendar, FileText, Settings, BarChart, ClipboardList } from "lucide-react";
+import { Home, Users, Calendar, FileText, Settings, BarChart, ClipboardList, MessagesSquare } from "lucide-react";
 
 interface MobileNavProps {
   className?: string;
@@ -35,16 +35,16 @@ export function MobileNav({ className }: MobileNavProps) {
       active: isActive("/events", true),
     },
     {
-      icon: <ClipboardList className="h-6 w-6" />,
-      label: "Templates",
-      path: "/messages",
-      active: isActive("/messages"),
-    },
-    {
       icon: <BarChart className="h-6 w-6" />,
       label: "Reports",
       path: "/reports",
       active: isActive("/reports"),
+    },
+    {
+      icon: <MessagesSquare className="h-6 w-6" />,
+      label: "Messages",
+      path: "/messages",
+      active: isActive("/messages"),
     },
     {
       icon: <Settings className="h-6 w-6" />,

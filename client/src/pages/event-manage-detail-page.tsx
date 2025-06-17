@@ -9,14 +9,18 @@ import {
   Edit, 
   UserPlus, 
   ClipboardList,
-  Users
+  Users,
+  CalendarPlus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatDate } from "@/lib/utils";
+import { downloadEventICS, EventCalendarData } from "@/utils/calendar";
+import { useToast } from "@/hooks/use-toast";
 
 export default function EventManageDetailPage() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Fetch the event details
   const { data: event, isLoading } = useQuery<Event>({
@@ -39,6 +43,45 @@ export default function EventManageDetailPage() {
   const handleAddNewStaff = () => {
     console.log('Add New Staff & Assign clicked for event:', eventId);
     // Future implementation: Navigate to staff creation page with return to this event
+  };
+
+  // Handle add to calendar button click
+  const handleAddToCalendar = async () => {
+    if (!event || !eventId) return;
+
+    try {
+      // Parse the event date and create start/end times
+      // For now, we'll use default times since the mock data doesn't include times
+      const eventDate = new Date(event.date);
+      const startDateTime = new Date(eventDate);
+      startDateTime.setHours(9, 0, 0, 0); // Default start time: 9:00 AM
+      
+      const endDateTime = new Date(eventDate);
+      endDateTime.setHours(17, 0, 0, 0); // Default end time: 5:00 PM
+
+      const calendarEvent: EventCalendarData = {
+        id: eventId,
+        name: event.name,
+        description: `StaffLoop Event - ${event.name}`,
+        location: event.location,
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString(),
+      };
+
+      await downloadEventICS(calendarEvent);
+      
+      toast({
+        title: "Calendar File Downloaded",
+        description: "The event has been added to your calendar file. Open it with your preferred calendar application.",
+      });
+    } catch (error) {
+      console.error('Error adding to calendar:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate calendar file. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Get badge variant based on status
@@ -103,14 +146,24 @@ export default function EventManageDetailPage() {
           <Card className="p-6">
             <div className="flex justify-between items-start">
               <h2 className="text-xl font-semibold mb-4">Event Details</h2>
-              <Button 
-                variant="outline" 
-                onClick={handleEditEvent}
-                className="flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                Edit Details
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleAddToCalendar}
+                  className="flex items-center gap-2"
+                >
+                  <CalendarPlus className="h-4 w-4" />
+                  Add to Calendar
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleEditEvent}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Details
+                </Button>
+              </div>
             </div>
             <div className="space-y-3">
               <p><strong>Event ID:</strong> {eventId}</p>

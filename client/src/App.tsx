@@ -25,6 +25,7 @@ import PaymentsPage from "@/pages/payments-page";
 import HelpPage from "@/pages/help-page";
 import AutomatedMessagesPage from "@/pages/automated-messages-page";
 import CalendarPage from "@/pages/calendar-page";
+import ActivityLogPage from "@/pages/activity-log-page";
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
                 <Route path="/payments" element={<PaymentsPage />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/activity-log" element={<ActivityLogPage />} />
               </Route>
             </Route>
 

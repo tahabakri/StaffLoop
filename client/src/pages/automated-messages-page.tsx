@@ -17,13 +17,34 @@ export default function AutomatedMessagesPage() {
   const [eventReminderTemplate, setEventReminderTemplate] = useState(
     "Reminder: You're scheduled to work at [Event Name] tomorrow at [Event Time]. Location: [Location]. Please arrive 15 minutes early and check in with your supervisor."
   );
+
+  // New template states
+  const [checkinConfirmationTemplate, setCheckinConfirmationTemplate] = useState(
+    "Hi [Staff Name], you've successfully checked in for [Event Name] at [Check-in Time]. Welcome!"
+  );
+
+  const [postEventThankYouTemplate, setPostEventThankYouTemplate] = useState(
+    "Thanks for your work at [Event Name], [Staff Name]! Your shift ended at [Clock-out Time]."
+  );
+
+
+
+  const [eventUpdateTemplate, setEventUpdateTemplate] = useState(
+    "Important Update for [Event Name]: [Your Custom Message Here]. - [Organizer Company Name]"
+  );
   
   // State for reminder timing
   const [reminderTime, setReminderTime] = useState("24");
   const [reminderUnit, setReminderUnit] = useState("hours");
+
+  // State for post-event thank you timing
+  const [thankYouDelay, setThankYouDelay] = useState("2");
   
-  // State for notification toggle
+  // State for notification toggles
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [checkinConfirmationEnabled, setCheckinConfirmationEnabled] = useState(true);
+  const [postEventThankYouEnabled, setPostEventThankYouEnabled] = useState(true);
+
   
   // Available placeholders for templates
   const placeholders = [
@@ -34,6 +55,36 @@ export default function AutomatedMessagesPage() {
     { name: "[Location]", description: "The event venue/location" },
     { name: "[Event Link]", description: "Link to view event details" },
     { name: "[Check-in Link]", description: "Link for staff to check in" },
+  ];
+
+  // Check-in confirmation placeholders
+  const checkinPlaceholders = [
+    { name: "[Staff Name]", description: "The staff member's full name" },
+    { name: "[Event Name]", description: "The name of the event" },
+    { name: "[Event Date]", description: "The date of the event" },
+    { name: "[Event Time]", description: "The start time of the event" },
+    { name: "[Check-in Time]", description: "The time when staff checked in" },
+    { name: "[Location]", description: "The event venue/location" },
+    { name: "[Supervisor Name]", description: "The name of the event supervisor" },
+  ];
+
+  // Post-event thank you placeholders
+  const thankYouPlaceholders = [
+    { name: "[Staff Name]", description: "The staff member's full name" },
+    { name: "[Event Name]", description: "The name of the event" },
+    { name: "[Event Date]", description: "The date of the event" },
+    { name: "[Clock-out Time]", description: "The time when staff clocked out" },
+    { name: "[Total Hours Worked]", description: "Total hours worked during the event" },
+    { name: "[Organizer Company Name]", description: "The name of the organizing company" },
+  ];
+
+
+
+  // Event update placeholders
+  const updatePlaceholders = [
+    { name: "[Event Name]", description: "The name of the event" },
+    { name: "[Organizer Company Name]", description: "The name of the organizing company" },
+    { name: "[Staff Name]", description: "The staff member's full name (for personalization)" },
   ];
   
   // Handle save actions (placeholder for now)
@@ -47,11 +98,31 @@ export default function AutomatedMessagesPage() {
     console.log("Reminder timing:", reminderTime, reminderUnit);
     // Future: API call to save template and timing
   };
-  
+
+  const handleSaveCheckinConfirmationTemplate = () => {
+    console.log("Saving check-in confirmation template:", checkinConfirmationTemplate);
+    console.log("Check-in confirmation enabled:", checkinConfirmationEnabled);
+    // Future: API call to save template
+  };
+
+  const handleSavePostEventThankYouTemplate = () => {
+    console.log("Saving post-event thank you template:", postEventThankYouTemplate);
+    console.log("Post-event thank you enabled:", postEventThankYouEnabled);
+    console.log("Thank you delay:", thankYouDelay, "hours");
+    // Future: API call to save template and timing
+  };
+
+
+
+  const handleSaveEventUpdateTemplate = () => {
+    console.log("Saving event update template:", eventUpdateTemplate);
+    // Future: API call to save template
+  };
+
   return (
     <div className="flex flex-col w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Edit Message Templates</h1>
+        <h1 className="text-2xl font-bold">Configure Auto-Messages</h1>
         <div className="flex items-center space-x-2">
           <Switch 
             id="notifications-enabled" 
@@ -211,21 +282,170 @@ export default function AutomatedMessagesPage() {
         </CardContent>
       </Card>
       
-      {/* Future Notification Types */}
-      <Card className="bg-gray-50 border-dashed">
+      {/* Check-in Confirmation Message Card */}
+      <Card>
         <CardHeader>
-          <CardTitle>Coming Soon: Additional Notification Types</CardTitle>
+          <CardTitle>Check-in Confirmation Message</CardTitle>
           <CardDescription>
-            We're working on more notification types to help you stay connected with your staff.
+            Message sent to staff immediately after a successful check-in.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <ul className="list-disc list-inside space-y-2 text-gray-500">
-            <li>Check-in confirmation messages</li>
-            <li>Post-event thank you messages</li>
-            <li>Payment confirmation notifications</li>
-            <li>Custom broadcast messages to all staff</li>
-          </ul>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <Switch 
+              id="checkin-confirmation-enabled" 
+              checked={checkinConfirmationEnabled}
+              onCheckedChange={setCheckinConfirmationEnabled}
+              disabled={!notificationsEnabled}
+            />
+            <Label htmlFor="checkin-confirmation-enabled">
+              Enable Check-in Confirmation Messages
+            </Label>
+          </div>
+
+          <Textarea 
+            value={checkinConfirmationTemplate}
+            onChange={(e) => setCheckinConfirmationTemplate(e.target.value)}
+            placeholder="Enter your check-in confirmation message template..."
+            className="min-h-[150px]"
+            disabled={!notificationsEnabled || !checkinConfirmationEnabled}
+          />
+          
+          <div className="bg-blue-50 p-4 rounded-md">
+            <p className="text-sm font-medium text-blue-700 mb-2">Available Placeholders:</p>
+            <div className="flex flex-wrap gap-2">
+              {checkinPlaceholders.map((placeholder) => (
+                <Badge 
+                  key={placeholder.name} 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-blue-100"
+                  title={placeholder.description}
+                >
+                  {placeholder.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          
+          <Button 
+            onClick={handleSaveCheckinConfirmationTemplate}
+            disabled={!notificationsEnabled || !checkinConfirmationEnabled}
+          >
+            Save Template
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Post-Event Thank You Message Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Post-Event Thank You Message</CardTitle>
+          <CardDescription>
+            Message sent to staff after an event or their shift concludes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2 mb-4">
+            <Switch 
+              id="post-event-thankyou-enabled" 
+              checked={postEventThankYouEnabled}
+              onCheckedChange={setPostEventThankYouEnabled}
+              disabled={!notificationsEnabled}
+            />
+            <Label htmlFor="post-event-thankyou-enabled">
+              Enable Post-Event Thank You Messages
+            </Label>
+          </div>
+
+          <Textarea 
+            value={postEventThankYouTemplate}
+            onChange={(e) => setPostEventThankYouTemplate(e.target.value)}
+            placeholder="Enter your post-event thank you message template..."
+            className="min-h-[150px]"
+            disabled={!notificationsEnabled || !postEventThankYouEnabled}
+          />
+          
+          <div className="bg-blue-50 p-4 rounded-md">
+            <p className="text-sm font-medium text-blue-700 mb-2">Available Placeholders:</p>
+            <div className="flex flex-wrap gap-2">
+              {thankYouPlaceholders.map((placeholder) => (
+                <Badge 
+                  key={placeholder.name} 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-blue-100"
+                  title={placeholder.description}
+                >
+                  {placeholder.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 mt-4">
+            <Label htmlFor="thankyou-delay" className="min-w-28">Send</Label>
+            <div className="flex space-x-2">
+              <Input 
+                id="thankyou-delay" 
+                type="number" 
+                value={thankYouDelay}
+                onChange={(e) => setThankYouDelay(e.target.value)}
+                className="w-20"
+                min="0"
+                max="24"
+                disabled={!notificationsEnabled || !postEventThankYouEnabled}
+              />
+              <span className="ml-2 text-gray-500">hours after last clock-out</span>
+            </div>
+          </div>
+          
+          <Button 
+            onClick={handleSavePostEventThankYouTemplate}
+            disabled={!notificationsEnabled || !postEventThankYouEnabled}
+          >
+            Save Template
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Event Update/Broadcast Template Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Event Update/Broadcast Template</CardTitle>
+          <CardDescription>
+            Default template for sending ad-hoc updates about a specific event to its assigned staff. (Actual sending initiated elsewhere).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea 
+            value={eventUpdateTemplate}
+            onChange={(e) => setEventUpdateTemplate(e.target.value)}
+            placeholder="Enter your event update/broadcast message template..."
+            className="min-h-[150px]"
+            disabled={!notificationsEnabled}
+          />
+          
+          <div className="bg-blue-50 p-4 rounded-md">
+            <p className="text-sm font-medium text-blue-700 mb-2">Available Placeholders:</p>
+            <div className="flex flex-wrap gap-2">
+              {updatePlaceholders.map((placeholder) => (
+                <Badge 
+                  key={placeholder.name} 
+                  variant="outline" 
+                  className="cursor-pointer hover:bg-blue-100"
+                  title={placeholder.description}
+                >
+                  {placeholder.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          
+          <Button 
+            onClick={handleSaveEventUpdateTemplate}
+            disabled={!notificationsEnabled}
+          >
+            Save Template
+          </Button>
         </CardContent>
       </Card>
     </div>
