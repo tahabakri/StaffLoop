@@ -27,12 +27,6 @@ export default function AutomatedMessagesPage() {
     "Thanks for your work at [Event Name], [Staff Name]! Your shift ended at [Clock-out Time]."
   );
 
-
-
-  const [eventUpdateTemplate, setEventUpdateTemplate] = useState(
-    "Important Update for [Event Name]: [Your Custom Message Here]. - [Organizer Company Name]"
-  );
-  
   // State for reminder timing
   const [reminderTime, setReminderTime] = useState("24");
   const [reminderUnit, setReminderUnit] = useState("hours");
@@ -78,15 +72,6 @@ export default function AutomatedMessagesPage() {
     { name: "[Organizer Company Name]", description: "The name of the organizing company" },
   ];
 
-
-
-  // Event update placeholders
-  const updatePlaceholders = [
-    { name: "[Event Name]", description: "The name of the event" },
-    { name: "[Organizer Company Name]", description: "The name of the organizing company" },
-    { name: "[Staff Name]", description: "The staff member's full name (for personalization)" },
-  ];
-  
   // Handle save actions (placeholder for now)
   const handleSaveAssignmentTemplate = () => {
     console.log("Saving assignment template:", eventAssignmentTemplate);
@@ -110,13 +95,6 @@ export default function AutomatedMessagesPage() {
     console.log("Post-event thank you enabled:", postEventThankYouEnabled);
     console.log("Thank you delay:", thankYouDelay, "hours");
     // Future: API call to save template and timing
-  };
-
-
-
-  const handleSaveEventUpdateTemplate = () => {
-    console.log("Saving event update template:", eventUpdateTemplate);
-    // Future: API call to save template
   };
 
   return (
@@ -401,48 +379,6 @@ export default function AutomatedMessagesPage() {
           <Button 
             onClick={handleSavePostEventThankYouTemplate}
             disabled={!notificationsEnabled || !postEventThankYouEnabled}
-          >
-            Save Template
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Event Update/Broadcast Template Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Event Update/Broadcast Template</CardTitle>
-          <CardDescription>
-            Default template for sending ad-hoc updates about a specific event to its assigned staff. (Actual sending initiated elsewhere).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea 
-            value={eventUpdateTemplate}
-            onChange={(e) => setEventUpdateTemplate(e.target.value)}
-            placeholder="Enter your event update/broadcast message template..."
-            className="min-h-[150px]"
-            disabled={!notificationsEnabled}
-          />
-          
-          <div className="bg-blue-50 p-4 rounded-md">
-            <p className="text-sm font-medium text-blue-700 mb-2">Available Placeholders:</p>
-            <div className="flex flex-wrap gap-2">
-              {updatePlaceholders.map((placeholder) => (
-                <Badge 
-                  key={placeholder.name} 
-                  variant="outline" 
-                  className="cursor-pointer hover:bg-blue-100"
-                  title={placeholder.description}
-                >
-                  {placeholder.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          
-          <Button 
-            onClick={handleSaveEventUpdateTemplate}
-            disabled={!notificationsEnabled}
           >
             Save Template
           </Button>
